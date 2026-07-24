@@ -8,8 +8,8 @@ import { generateWithTools, generateDecision, type LlmMessage } from "../lib/llm
 import { TOOLS, dispatchTool } from "./tools.js";
 import { SYSTEM_PROMPT, CONFIDENCE_THRESHOLD } from "./prompts.js";
 import { seedInvoices } from "../data/seed.js";
-import { recordOutcome } from "./memory.js";
-import type { Decision, TrailStep } from "../lib/types.js";
+import { recordOutcome, getOutcomesForCustomer } from "./memory.js";
+import type { Decision, DecisionStatus, TrailStep } from "../lib/types.js";
 
 const TURN_DELAY_MS = 5000; // free-tier is ~10 RPM; without this the gate fails on quota, not code
 const MAX_TOOL_TURNS = 5;
@@ -29,9 +29,19 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     `(${invoice.customerName}, Rs ${invoice.amountDue.toLocaleString()}), minimising overdue ` +
     `receivables without damaging the relationship.`;
 
+  // Outcome memory: earlier decisions for this same customer, within this run, feed back into
+  // this one — same intent as CLAUDE.md's promise that outcome memory changes future behaviour.
+  const priorOutcomes = getOutcomesForCustomer(invoice.customerId);
+  const priorOutcomesText =
+    priorOutcomes.length > 0
+      ? `\n\nPrior decisions for this customer, earlier in this run:\n${priorOutcomes
+          .map((d) => `- ${d.action} (status: ${d.status}, confidence: ${d.confidence})`)
+          .join("\n")}`
+      : "";
+
   const messages: LlmMessage[] = [
     { role: "system", text: SYSTEM_PROMPT },
-    { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}` },
+    { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}` },
   ];
 
   const trail: TrailStep[] = [];
@@ -41,10 +51,11 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   // A decision may only be finalised after a REAL terminal tool call (ask_human or
   // send_reminder_email) has been dispatched and logged — never from prose describing an
   // intended action. This is the guard against the 21 July bug: tool names written as text
-  // instead of genuine function calls.
-  let terminalToolCalled = false;
+  // instead of genuine function calls. Which tool fired is also what determines the final
+  // status below — never the model's self-reported status alone.
+  let terminalTool: "ask_human" | "send_reminder_email" | null = null;
 
-  while (toolTurns < MAX_TOOL_TURNS && !terminalToolCalled) {
+  while (toolTurns < MAX_TOOL_TURNS && !terminalTool) {
     if (toolTurns > 0) await sleep(TURN_DELAY_MS);
     const response = await generateWithTools(messages, TOOLS);
 
@@ -95,12 +106,13 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     messages.push({ role: "tool", toolResults });
     toolTurns += 1;
 
-    terminalToolCalled = response.toolCalls.some(
-      (call) => call.name === "ask_human" || call.name === "send_reminder_email",
-    );
+    const calledAskHuman = response.toolCalls.some((call) => call.name === "ask_human");
+    const calledSendEmail = response.toolCalls.some((call) => call.name === "send_reminder_email");
+    if (calledAskHuman) terminalTool = "ask_human";
+    else if (calledSendEmail) terminalTool = "send_reminder_email";
   }
 
-  if (!terminalToolCalled) {
+  if (!terminalTool) {
     // Turn budget exhausted without the model taking a real terminal action. This is a genuine
     // operational failure (analogous to a timeout), not a faked escalation — so dispatch a real
     // ask_human call and log it, same as any other tool call, rather than inventing a decision.
@@ -108,7 +120,11 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
       whatTried: `Called ${trail.length} tool(s) while investigating ${invoice.id}.`,
       whatFound: trail.length > 0 ? "See the trail above for what each tool returned." : "No data was retrieved.",
       whatUnresolved: `No confident action was reached within ${MAX_TOOL_TURNS} reasoning turns.`,
-      options: ["Have a human review the trail above and decide manually."],
+      options: [
+        "Have a human review the trail above and decide manually.",
+        "Re-run the agent with a higher turn budget in case it simply needed more steps.",
+        "Treat this as a data gap and check whether the seeded invoice/customer records are complete.",
+      ],
       recommendation: "Manual review required — the agent's turn budget was exhausted.",
     };
     stepIndex += 1;
@@ -123,6 +139,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
       success: true,
     });
     messages.push({ role: "tool", toolResults: [{ name: "ask_human", result: output }] });
+    terminalTool = "ask_human";
   }
 
   await sleep(TURN_DELAY_MS);
@@ -132,8 +149,12 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   });
   const output = await generateDecision(messages);
 
+  // Status is derived from which terminal tool was actually dispatched, never from the model's
+  // self-reported output.status alone — otherwise a decision record could claim an action (e.g.
+  // "auto_executed") that was never really taken, which is the same class of bug as writing a
+  // tool name in prose instead of calling it.
   const belowThreshold = output.confidence < CONFIDENCE_THRESHOLD;
-  const status = belowThreshold ? "ask_human" : output.status;
+  const status: DecisionStatus = terminalTool === "ask_human" || belowThreshold ? "ask_human" : "auto_executed";
 
   const decision: Decision = {
     id: decisionId,
