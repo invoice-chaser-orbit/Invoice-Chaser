@@ -1,167 +1,206 @@
-# PROJECT CONTEXT — InvoiceChaser / Team ORBIT / NeuroX 1.0 Phase 2
+# InvoiceChaser — Team ORBIT
 
-Paste this into the Claude Project's custom instructions so every new chat starts with full context.
+Autonomous accounts-receivable collection agent for SMEs. Built for NeuroX 1.0 Phase 2 (buildathon by Hackathon Hub NSBM, presented by CueGrowth). Grand finale 31 July 2026 — physical event, live demo before judges.
 
 ---
 
-## WHO
+## THE ONE RULE
 
-Team **ORBIT**, 4 students, Sri Lanka. Competing in **NeuroX 1.0**, a national-level buildathon organised by Hackathon Hub of NSBM / NSBM Green University, presented by **CueGrowth**.
+**Any deviation from the Phase 1 proposal = immediate disqualification.** No recovery path.
 
-| Member | Informal name | Owns |
+Everything under "Locked Architecture" below is a commitment made in the proposal. Do not remove, rename, or restructure any of it. New capability must fit *inside* these promises, not alongside them.
+
+Before merging anything, ask: does this add a capability we never promised, remove one we did, or change the human-in-the-loop split? If yes, stop.
+
+---
+
+## LOCKED ARCHITECTURE
+
+### The loop
+`sense → reason → act → observe`, running continuously over the receivables ledger.
+
+Standing goal: *"minimise overdue receivables without damaging customer relationships."*
+
+The agent receives a **goal, not a command**. Each trigger becomes a sub-goal it plans against itself. Three trigger types:
+1. Daily ledger scan
+2. Inbound email reply
+3. Payment webhook
+
+Same lateness must produce **different decisions for different debtors** based on relationship history, payment patterns, and open deals. This branching is the core of the Autonomous Reasoning score (25%) — it must be visible, not claimed.
+
+### Five tool categories — all must exist
+| Category | Real-world binding | Status in build |
 |---|---|---|
-| E.D.T.N. Gunarathne | Tharusha (me, the user) | Agent core: `loop.ts`, `tools.ts`, `prompts.ts`, `memory.ts`. Plus Git ownership and UI/Git mentoring for Mansandi. |
-| P.A.T. Piyumika | Mansi | Backend: Supabase schema + persistence, reply classifier, error recovery ladder. Designated **second person who can explain the agent loop** in Q&A. |
-| A.L.M. Pabarusiri | Taluni | Backend: Gmail adapter, remaining tool adapters, trigger/webhook layer. |
-| A.N.G.T. Mansandi | Mansandi | Frontend: Next.js dashboard, approval queue, audit-trail + teach-me views. New to hackathons; paired with Tharusha. |
+| Accounting | QuickBooks / Xero | Simulated (seeded data) |
+| Email | Gmail / Outlook | **LIVE** |
+| Payments | Stripe / PayHere | Simulated |
+| CRM | HubSpot / Zoho | Simulated |
+| Calendar + SMS | Google Cal / Twilio / Ideamart | Simulated |
 
-Seeded scenarios + demo narrative are handled by **all four** at the end (Days 6–8).
+Simulated tools are **real function calls the agent chooses and executes** against seeded data — not hardcoded branches, not mocked returns inside the prompt. Every simulated adapter sits behind the identical interface as the live one, so swapping in QuickBooks is an adapter change, not an architecture change. We say this to judges plainly and unprompted.
 
-**Standing rules:** nobody edits `lib/types.ts` alone (it is the shared seam). Nightly 15-minute all-hands watching the full flow actually run.
+### Human-in-the-loop split
+**Gated — human decides before execution:**
+- Any escalation beyond a first reminder
+- Any payment plan, discount, or deadline extension
+- Any dispute response
+- Any legal / collections handoff recommendation
 
----
+**Autonomous — agent executes, human can inspect after:**
+- First-touch reminders on pre-approved tone
+- Payment reconciliation and receipts
+- CRM / ledger housekeeping
+- Scheduling its own follow-ups
 
-## THE PROJECT
+Human powers in the queue: **approve / edit / redirect / override**. Nothing gated executes before a human decides. Every human decision writes back to agent memory.
 
-**InvoiceChaser** — an autonomous accounts-receivable collection agent for SMEs.
+### Error recovery ladder — four rungs
+1. **Retry** with backoff
+2. **Fall back** to an equivalent tool (SMS when email bounces; cached ledger when accounting is unreachable)
+3. **Degrade gracefully** — queue and mark pending, never silently drop
+4. **Escalate** with a structured report
 
-The problem: in most small businesses, someone's week disappears into chasing money already earned. It is manual, repetitive, and judgment-intensive at the same time — which is why rule-based reminder software fails. A blanket "PAY NOW" to your most valuable customer on day one of lateness damages a relationship worth far more than the invoice. The judgment layer (who to chase, how firmly, through which channel, when to stop and escalate) has never been automatable. Slow collections extend DSO, which is a working-capital problem — acute for Sri Lankan SMEs on thin cash buffers and expensive credit.
-
-**Agentic loop:** sense → reason → act → observe, running continuously over the receivables ledger. Standing goal: *"minimise overdue receivables without damaging customer relationships."* Each trigger (daily ledger scan, inbound email reply, payment webhook) becomes a sub-goal. Same 21-day lateness produces different decisions for different debtors depending on relationship history, payment patterns, and open deals.
-
-**Five tool categories** (all promised in the Phase 1 proposal, all must exist):
-1. Accounting (QuickBooks/Xero) — invoices, payments, aging
-2. Email (Gmail/Outlook) — outbound reminders + inbound reply parsing
-3. Payments (Stripe/PayHere) — payment links, settlement webhooks
-4. CRM (HubSpot/Zoho) — relationship value, contacts, open deals
-5. Calendar + SMS (Google Cal / Twilio / Ideamart) — follow-ups, fallback channel
-
-**Stack:** TypeScript, Anthropic SDK (native tool-use), Supabase/Postgres, Next.js dashboard.
-
-**HITL split — gated vs autonomous:**
-- *Gated (human decides before execution):* any escalation beyond a first reminder; any payment plan, discount, or deadline extension; any dispute response; any legal/collections handoff recommendation.
-- *Autonomous (agent executes, human can inspect):* first-touch reminders on pre-approved tone, payment reconciliation and receipts, CRM/ledger housekeeping, scheduling its own follow-ups.
-- Human powers in the queue: **approve / edit / redirect / override**. Nothing gated executes before a decision. Human decisions feed back into agent memory.
-
-**Error recovery ladder (4 rungs):** retry with backoff → fall back to equivalent tool (SMS if email bounces, cached ledger if accounting is down) → degrade gracefully (queue and mark pending, never drop) → escalate with a structured report. Failures are logged as rigorously as successes; the audit trail has no holes.
+Failures log to `trail_steps` with the same rigour as successes. The audit trail has no holes — judges may check.
 
 ---
 
-## THE RULES THAT DECIDE THIS
+## STACK
 
-**HARD RULE: any deviation from the Phase 1 proposal = immediate disqualification.** This is the only rule with no recovery path. All architectural promises above are locked. New work must fit *inside* them.
+- **TypeScript** throughout
+- **Google Gemini API** (`@google/generative-ai`) — LLM reasoning core, native function calling
+- **Supabase / Postgres** — decisions, trail steps, outcome memory
+- **Next.js** — dashboard, approval queue, audit trail, teach-me views
+- **Gmail API** — the one live external integration
 
-From the 22 July 2026 briefing (Anton + **Shamal De Silva**, CTO/co-founder of CueGrowth, on the judging panel):
+### Provider abstraction — important
+The model provider sits behind `lib/llm.ts`, which exposes a provider-agnostic interface (`generateWithTools(messages, tools)` returning a normalised response). Agent code in `agent/` must **never** import the Gemini SDK directly.
 
-- **MVP is sufficient**, full completion not expected. But ORBIT qualified **15th of 15** teams (from 81), so the goal is to win outright, not to scrape through.
-- **Shamal's core thesis:** agents must be *explainable to a human*. The operator must be able to **LEARN the process by watching the agent work and replicate it without the agent**. He explicitly does NOT want agents that call a bunch of backend APIs and return results the operator cannot account for.
-- **HITL is about DECISION POINTS, not a percentage of human involvement.** The agent should recognise when it lacks context or confidence and proactively reach out with a **structured message: what it already tried + proposed options**. Never a bare "I don't know."
-- **Judges must trace every decision without reading source code.** Black-box autonomy is disallowed.
-- **Fake/generated demo footage is heavily penalised.** A recorded backup of the *real* working product is explicitly permitted.
-- **Explain the domain in the first minutes** so judges don't get stuck in a question loop about receivables instead of assessing the agent.
-- **"Did an AI write this?" is coming.** AI coding assistants are allowed; code the team cannot explain scores badly.
-- Not allowed: agent-as-a-service platforms, no-code AI builders, vendor agents submitted as your own, anything where you cannot explain how the autonomy is implemented.
+Two reasons this matters:
+1. The proposal describes an *LLM reasoning core*, not a specific vendor. Keeping the provider behind an interface means the architecture is unchanged regardless of which model runs — a defensible position if a judge asks.
+2. If Gemini rate-limits or degrades during the build week, swapping providers is a one-file change rather than a rewrite of the loop.
 
-**Judging weights:** B2B Impact & Viability 25% · Autonomous Reasoning 25% · Technical Architecture 20% · Human-in-the-Loop 15% · Live Demo 15%.
-
-**Grand finale: 31 July 2026**, physical event, live demo before judges.
+If `lib/llm.ts` does not exist yet, create it before writing any provider-specific code.
 
 ---
 
-## THE DIFFERENTIATOR — our one bet
+## FILE OWNERSHIP
 
-Every team will build an agent that calls APIs and shows results on a dashboard. That is exactly the pattern Shamal named as the problem.
+| Path | Owner | Purpose |
+|---|---|---|
+| `lib/types.ts` | **shared — see rule below** | `Decision`, `Invoice`, `TrailStep`. Single source of truth. |
+| `lib/llm.ts` | Tharusha | Provider abstraction over Gemini. |
+| `data/seed.ts` | Tharusha | 5 invoice personalities. |
+| `data/history.ts` | Tharusha | CRM + payment history the tools read. |
+| `agent/prompts.ts` | Tharusha | System prompt — the reasoning instructions. |
+| `agent/tools.ts` | Tharusha | Tool definitions + dispatcher. |
+| `agent/memory.ts` | Tharusha | Outcome memory. |
+| `agent/loop.ts` | Tharusha | Multi-turn function-calling loop, captures `TrailStep[]`. |
+| `lib/supabase.ts`, schema | Mansi | Persistence layer. |
+| `agent/classifier.ts` | Mansi | Reply classification. |
+| `lib/recovery.ts` | Mansi | Error recovery ladder. |
+| `lib/gmail.ts` | Taluni | Gmail send + poll. |
+| `lib/adapters/*` | Taluni | Remaining tool adapters. |
+| `app/**` | Mansandi | Next.js dashboard, approval queue, audit trail, teach-me panel. |
 
-Our answer: **every decision renders as a teachable procedure, not just a result.** A `manualProcedure: string[]` field on the decision output.
-
-Not: *"Sent firm notice to Lanka Hardware."*
-
-But:
-> I checked the aging report → invoice #1043, 21 days overdue.
-> I checked their payment history → they have paid 10–15 days late for eight years. For this customer that is normal, not a warning sign.
-> I checked the CRM → Rs. 2.4M annual account, renewal open in six weeks.
-> **Therefore:** a firm notice risks a renewal worth far more than this invoice. Sending a warm nudge instead.
-> **If you were doing this manually:** open the aging report, cross-check the customer's payment pattern against their own history rather than a fixed threshold, then check for open deals before choosing tone.
-
-A finance officer who watches five of these has *learned the collections judgment process*. That is Shamal's thesis delivered in our domain.
-
-**Not a deviation:** the Phase 1 proposal already promises every proposed action arrives with the agent's reasoning attached — what it observed, what it inferred, why this action over alternatives — so approval is informed rather than rubber-stamp. This delivers that promise more completely.
-
----
-
-## CONFIRMED DECISIONS
-
-- **Online/cloud, Supabase** — not offline. Components are interconnected; offline would harness less of the capability.
-- **Gmail is LIVE.** Accounting, CRM, payments, calendar/SMS are **simulated behind the same tool interface** — real function calls the agent chooses and executes, reading seeded data. Disclosed honestly and unprompted to judges: *"swapping in QuickBooks is an adapter change, not an architecture change."*
-- **Gmail OAuth pulled forward to Day 1** (three days before needed) to de-risk.
-- **Hard code freeze 6pm Day 7 (30 July).** Only crash fixes after.
-- **Record a real clean run on Day 7** as network-failure backup. Never presented as live.
-- **Phone hotspot as primary connectivity** at the venue, venue wifi as backup, both tested before presenting.
+**Rule: nobody edits `lib/types.ts` alone.** It is the seam every file shares. Any change gets a two-minute group heads-up first. If a task requires changing it, say so explicitly rather than editing silently.
 
 ---
 
-## CODEBASE STATE
+## NON-NEGOTIABLE IMPLEMENTATION RULES
 
-Written and type-checking clean, but **as of 23 July nothing had ever been executed** — no real API call had been made. Day 0 is the gate for that.
+**1. Real function calling only.**
+An LLM that writes tool *names as text* in its output is not tool use. It must go through Gemini's native function-calling API, return structured `functionCall` parts, and have those dispatched to real functions whose real return values feed back into the next turn. This exact bug shipped once on 21 July and was caught late. Judges will ask to see tool-use logs.
 
-| File | Purpose |
-|---|---|
-| `lib/types.ts` | Shared Decision/Invoice types. Single source of truth. |
-| `data/seed.ts` | 5 invoice "personalities": loyal payer, promise-breaker, open-renewal, reconciliation short-payment (Rs. 95,500 paid against Rs. 100,000), low-confidence case. |
-| `data/history.ts` | CRM + payment history the tools read from. |
-| `agent/prompts.ts` | System prompt — the reasoning instructions. |
-| `agent/tools.ts` | 3 real callable tools via Anthropic native tool-use: `lookup_accounting`, `lookup_crm`, `check_payment_history` + dispatcher. |
-| `agent/memory.ts` | Outcome memory so past decisions inform future ones ("adapt dynamically"). |
-| `agent/loop.ts` | Multi-turn tool-calling while-loop, captures `TrailStep[]` = the transparent decision trail. |
+**2. Every tool call persists a `trail_steps` row.**
+As it happens, not batched at the end. One row per call: decision ID, step index, tool name, input, output, timestamp. This table *is* the audit trail the judges click through. Failed calls are logged too.
 
-**Not yet built:** Supabase persistence, Gmail adapter, Next.js dashboard, approval queue UI, audit-trail page, error recovery ladder, teach-me layer, reply classifier, remaining 2 tool categories.
+**3. Every decision carries `manualProcedure: string[]`.**
+This is the project's differentiator. It is the numbered steps a finance officer would follow to reach this same decision **without the agent**. It must read like a colleague teaching you the judgment, not like a log of what happened.
 
-**Key past lesson:** an LLM that writes tool *names* as text is NOT multi-tool integration. Judges will ask to see real tool-use logs. This bug was found and fixed on 21 July.
+Wrong: *"Called lookup_crm. Called check_payment_history. Sent email."*
 
----
+Right: *"Open the aging report and find invoices past terms. Before choosing a tone, cross-check this customer's payment pattern against their own history rather than a fixed threshold — some customers are habitually 10 days late and that is normal for them. Then check the CRM for open deals, because a firm notice on a renewal worth more than the invoice costs you more than it collects."*
 
-## 8-DAY PLAN
+The rationale: the sponsor's stated thesis is that a human operator must be able to **learn the process by watching the agent and replicate it without the agent**. He explicitly does not want agents that call backend APIs and return results the operator cannot account for. This field is our answer. If a change would weaken or bypass it, don't.
 
-| Day | Date | Theme | Ends with |
-|---|---|---|---|
-| **0** | Jul 23 | Ignition — **HARD GATE** | 5 real reasoned decisions printed to terminal, watched by all four. Nothing else starts until this works. |
-| **1** | Jul 24 | Persistence + skeleton | Decisions survive in Supabase; ugly webpage displays them. Gmail OAuth done. |
-| **2** | Jul 25 | Five tools + visible trail | All 5 tool categories callable; trail renders step-by-step in browser. |
-| **3** | Jul 26 | Email out + human gate | **MVP CHECKPOINT.** Approve in UI → real email leaves → status updates. |
-| **4** | Jul 27 | The teach-me layer | Every decision carries a manual procedure. **The bet lands.** |
-| **5** | Jul 28 | Failure day, on purpose | Recovery ladder works and is demonstrable by breaking things live. |
-| **6** | Jul 29 | Replies + scale + polish | Inbound replies re-enter the loop; 20–30 invoice ledger; UI presentable. |
-| **7** | Jul 30 | Freeze and rehearse | Code frozen 6pm. Three clean end-to-end runs. Backup recorded. |
-| **8** | Jul 31 | **GRAND FINALE** | Present. |
+**4. The agent must know when it doesn't know.**
+Below the confidence threshold, route to `ask_human` rather than guessing. The escalation message is **structured**: what I tried, what I found, what I could not resolve, two or three proposed options, and a recommendation. Never a bare "I don't know."
 
-Full day-by-day task breakdown per person is in `ORBIT_Phase2_WorkBreakdown.pdf`.
+**5. Tool selection is not a fixed sequence.**
+The agent chooses which tools to call per case. A routine reminder might touch two; the reconciliation case should touch four. We demo two cases side by side with different tool sets — if the sequence is hardcoded, that demo dies.
 
 ---
 
-## DEMO RUN-OF-SHOW (~6 min, built Day 7)
+## SEEDED SCENARIOS — what each must prove
 
-1. Frame the domain in under a minute. State plainly: nothing is pre-recorded, everything is live.
-2. Run the ledger scan live.
-3. Two contrasting decisions side by side — same lateness, different outcome, different tool sets used.
-4. **The teach-me panel — linger here.** This is the differentiator.
-5. The reconciliation trail (Rs. 95,500 case) — goal → tool → output → tool → output → decision.
-6. Break a tool deliberately, show retry → fallback → escalate.
-7. Approve in the queue, real email arrives.
-8. Close on impact numbers (DSO, cash recovered, hours saved).
+Do not edit these into blandness. Each exists to demonstrate one specific behaviour under judging.
 
-**Five Q&A questions certain to come** — each person must answer aloud until fluent:
-1. What makes it autonomous? → receives a goal not a command; each invoice becomes a sub-goal it plans against itself.
-2. Walk the loop step by step — what triggers the next action? → three trigger types; sense/reason/act/observe; outcome feeds the next decision for that customer.
-3. How does it choose tools? → not a fixed sequence; show two cases with different tool sets.
-4. How does it recover from failures? → four rungs; then break something live rather than describing it.
-5. Did you write this or did an AI? → Claude used as coding assistant (explicitly permitted); the loop, prompts and architecture decisions are ours; each of us can walk our own files. *Then actually be able to do it.*
+1. **Loyal payer** — habitually 10–15 days late over years, large account, renewal open. Proves: the agent reads *pattern relative to the customer*, not an absolute threshold, and softens tone to protect relationship value.
+2. **Promise-breaker** — previously promised a date and missed it. Proves: outcome memory changes future behaviour; escalation is earned, not scheduled.
+3. **Open-renewal** — contract renewal imminent. Proves: CRM context overrides aging-based urgency.
+4. **Reconciliation short-payment** — Rs. 95,500 received against Rs. 100,000. Proves: hypothesis chain (bank fee? partial payment? withholding tax?), each checked against data, and *asks* rather than force-matching when confidence stays low. Strongest single reasoning demo — must run perfectly every time.
+5. **Low-confidence case** — deliberately ambiguous. Proves: rule 4 above. Must reach `ask_human`.
 
 ---
 
-## HOW I WANT CLAUDE TO WORK WITH ME
+## COMMANDS
 
-- Be direct about gaps and risks rather than reassuring. The 21 July catch (tool names as text ≠ tool use) was worth more than any encouragement.
-- Check new work against the Phase 1 proposal before suggesting it — deviation is disqualifying.
-- Check new work against Shamal's explainability thesis — that is where the marks are.
-- Prefer working code over more documentation.
-- I prefer downloadable formatted outputs (PDF/docx/markdown) for anything the team needs to share.
+```bash
+npx tsx agent/loop.ts     # run the agent — the core smoke test
+npx tsc --noEmit          # typecheck
+npm run dev               # Next.js dashboard
+```
+
+Environment variables (see `.env.example`):
+```
+GEMINI_API_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GMAIL_USER=
+```
+
+Never commit `.env`, `credentials.json`, or `token.json`.
+
+---
+
+## SCHEDULE
+
+| Day | Date | Ends with |
+|---|---|---|
+| 0 | Jul 23 | **HARD GATE** — 5 real reasoned decisions printed to terminal, watched by all four. |
+| 1 | Jul 24 | Decisions persist in Supabase; ugly page displays them. Gmail OAuth done. |
+| 2 | Jul 25 | All 5 tool categories callable; trail renders step-by-step in browser. |
+| 3 | Jul 26 | **MVP** — approve in UI → real email leaves → status updates. |
+| 4 | Jul 27 | Teach-me layer. Every decision carries a manual procedure. |
+| 5 | Jul 28 | Recovery ladder works and is demonstrable by breaking things live. |
+| 6 | Jul 29 | Replies re-enter the loop; 20–30 invoice ledger; UI presentable. |
+| 7 | Jul 30 | **Code freeze 6pm.** Three clean end-to-end runs. Real backup recorded. |
+| 8 | Jul 31 | Grand finale. |
+
+After the Day 7 freeze: crash fixes only. No features.
+
+---
+
+## JUDGING WEIGHTS — where effort pays
+
+- **25% B2B Impact & Viability** — seeded scenarios that read like a real receivables story
+- **25% Autonomous Reasoning** — visible branching, real multi-turn tool use
+- **20% Technical Architecture** — five tools behind one interface, clean separation, working recovery
+- **15% Human-in-the-Loop** — identified decision points, structured escalations
+- **15% Live Demo** — nothing crashes, everything visible
+
+Also scored implicitly: **can the team explain the code?** AI coding assistants are permitted, but code nobody can walk through scores badly. Every file has a named owner above who must be able to explain it under questioning.
+
+---
+
+## DECISIONS AND WHY
+
+Written down so the reasoning survives, and so anyone can answer "why did you build it this way" without reconstructing it.
+
+- **Online / Supabase rather than local Postgres.** Components are interconnected; an offline build would harness less of the capability. Mitigated by a phone hotspot as primary connectivity at the venue and a recorded real run as fallback.
+- **Gemini rather than Anthropic for the reasoning core.** Access and cost. Kept behind `lib/llm.ts` so the architecture described in the proposal — an LLM reasoning core with native tool use — is unchanged.
+- **Gmail live, other four simulated.** One genuinely live integration proves the pattern; four fragile OAuth integrations would risk the demo. Disclosed openly to judges rather than hidden.
+- **Gmail OAuth pulled forward to Day 1**, three days before it is needed, because Google's consent screen setup eats time unpredictably.
+- **`manualProcedure` added on Day 4.** Costs half a day, directly answers the sponsor's stated thesis, and sits inside the proposal's existing promise that reasoning is attached to every action so approval is informed rather than rubber-stamp. Not a deviation.
+- **Hard code freeze 6pm Day 7.** A feature added the night before a demo is the most common way hackathon teams lose on stage.
