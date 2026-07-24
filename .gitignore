@@ -1,3 +1,6 @@
+# Claude Code background-job worktrees (nested checkouts, not project source)
+.claude/worktrees/
+
 # Logs
 logs
 *.log
