@@ -1,5 +1,15 @@
 # Claude Code background-job worktrees (nested checkouts, not project source)
+.claude/
 .claude/worktrees/
+
+# Headroom
+.tokensave/
+
+# Graphify scratch cache (regenerate via /graphify)
+graphify-out/cache/
+
+# Local working docs
+workplan.pdf
 
 # Logs
 logs
