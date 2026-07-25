@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { Decision } from './types';
 import type { Decision, TrailStep } from './types';
 
 //savedecisions()
