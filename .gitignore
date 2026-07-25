@@ -11,6 +11,10 @@ graphify-out/cache/
 # Local working docs
 workplan.pdf
 
+# Editor - keep shared TS-SDK setting, ignore personal editor state
+.vscode/*
+!.vscode/settings.json
+
 # Logs
 logs
 *.log
