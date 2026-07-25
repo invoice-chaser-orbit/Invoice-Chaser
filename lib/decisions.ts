@@ -116,3 +116,20 @@ export async function getTrail(decisionId: string): Promise<TrailStep[]> {
     success: row.success,
   }));
 }
+
+//saveTrailStep()
+export async function saveTrailStep(step: TrailStep): Promise<void> {
+  const { error } = await supabase.from('trail_steps').insert({
+    decision_id: step.decisionId,
+    step_index: step.stepIndex,
+    tool_name: step.toolName,
+    input: step.input,
+    output: step.output,
+    timestamp: step.timestamp,
+    success: step.success,
+  });
+
+  if (error) {
+    throw new Error(`Failed to save trail step: ${error.message}`);
+  }
+}
