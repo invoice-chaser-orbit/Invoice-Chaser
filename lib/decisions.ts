@@ -132,3 +132,33 @@ export async function saveTrailStep(step: TrailStep): Promise<void> {
     throw new Error(`Failed to save trail step: ${error.message}`);
   }
 }
+
+
+//small get/set functions
+export async function setDisputeStatus(
+  invoiceId: string,
+  status: "none" | "open" | "resolved"
+): Promise<void> {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ dispute_status: status })
+    .eq('id', invoiceId);
+
+  if (error) {
+    throw new Error(`Failed to set dispute status: ${error.message}`);
+  }
+}
+
+export async function getDisputeStatus(invoiceId: string): Promise<"none" | "open" | "resolved"> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('dispute_status')
+    .eq('id', invoiceId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get dispute status: ${error.message}`);
+  }
+
+  return data.dispute_status;
+}
