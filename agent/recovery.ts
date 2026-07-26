@@ -1,40 +1,19 @@
 import type { TrailStep } from "../lib/types.js";
 import { saveTrailStep } from "../lib/decisions.js";
 
-export interface RecoveryOptions {
-  decisionId: string;
-  stepIndex: number;
-  toolName: string;
-  input: Record<string, unknown>;
-  primaryCall: () => Promise<unknown>;
-  fallbackCall?: () => Promise<unknown>;
-  maxRetries?: number;
-  retryDelayMs?: number;
-}
-
-export interface RecoveryResult {
-  output: unknown;
-  rungUsed: "primary" | "fallback" | "degraded" | "escalated";
-  step: TrailStep;
-}
-
-/**
- * Wraps a tool call in the four-rung recovery ladder:
- * retry with backoff -> fallback to an equivalent tool -> degrade gracefully
- * (queue, mark pending) -> escalate with a structured report.
- * Every attempt is logged to trail_steps, successes and failures alike.
- */
 export async function withRecovery(options: RecoveryOptions): Promise<RecoveryResult> {
   const { decisionId, stepIndex, toolName, input, primaryCall, fallbackCall, maxRetries = 2, retryDelayMs = 1000 } = options;
 
-  // Rung 1: retry with backoff
   let lastError: unknown;
+  let currentStepIndex = stepIndex;
+
+  // Rung 1: retry with backoff
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const output = await primaryCall();
       const step: TrailStep = {
         decisionId,
-        stepIndex,
+        stepIndex: currentStepIndex,
         toolName,
         input,
         output,
@@ -45,22 +24,24 @@ export async function withRecovery(options: RecoveryOptions): Promise<RecoveryRe
       return { output, rungUsed: "primary", step };
     } catch (err) {
       lastError = err;
+
+      // Log THIS failed attempt immediately — no holes, every attempt visible
+      await saveTrailStep({
+        decisionId,
+        stepIndex: currentStepIndex,
+        toolName,
+        input,
+        output: { error: String(err), attempt: attempt + 1 },
+        timestamp: new Date().toISOString(),
+        success: false,
+      });
+      currentStepIndex++;
+
       if (attempt < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (attempt + 1)));
       }
     }
   }
-
-  // Log the primary failure before moving to the next rung
-  await saveTrailStep({
-    decisionId,
-    stepIndex,
-    toolName,
-    input,
-    output: { error: String(lastError) },
-    timestamp: new Date().toISOString(),
-    success: false,
-  });
 
   // Rung 2: fallback to an equivalent tool
   if (fallbackCall) {
@@ -68,7 +49,7 @@ export async function withRecovery(options: RecoveryOptions): Promise<RecoveryRe
       const output = await fallbackCall();
       const step: TrailStep = {
         decisionId,
-        stepIndex: stepIndex + 1,
+        stepIndex: currentStepIndex,
         toolName: `${toolName}_fallback`,
         input,
         output,
@@ -80,27 +61,29 @@ export async function withRecovery(options: RecoveryOptions): Promise<RecoveryRe
     } catch (fallbackErr) {
       await saveTrailStep({
         decisionId,
-        stepIndex: stepIndex + 1,
+        stepIndex: currentStepIndex,
         toolName: `${toolName}_fallback`,
         input,
         output: { error: String(fallbackErr) },
         timestamp: new Date().toISOString(),
         success: false,
       });
+      currentStepIndex++;
     }
   }
 
-  // Rung 3: degrade gracefully — queue and mark pending rather than drop
+  // Rung 3: degrade gracefully
   const degradedStep: TrailStep = {
     decisionId,
-    stepIndex: stepIndex + 2,
+    stepIndex: currentStepIndex,
     toolName: `${toolName}_degraded`,
     input,
     output: { status: "queued_pending", reason: "All retries and fallback exhausted" },
     timestamp: new Date().toISOString(),
-    success: true, // degrading gracefully IS the successful outcome at this rung
+    success: true,
   };
   await saveTrailStep(degradedStep);
+  currentStepIndex++;
 
   // Rung 4: escalate with a structured report
   const escalationOutput = {
@@ -116,7 +99,7 @@ export async function withRecovery(options: RecoveryOptions): Promise<RecoveryRe
   };
   const escalationStep: TrailStep = {
     decisionId,
-    stepIndex: stepIndex + 3,
+    stepIndex: currentStepIndex,
     toolName: "ask_human",
     input,
     output: escalationOutput,
