@@ -11,6 +11,7 @@ export interface Invoice {
   dueDate: string;
   daysOverdue: number;
   description: string;
+  disputeStatus?: "none" | "open" | "resolved";
 }
 
 export interface PaymentRecord {
