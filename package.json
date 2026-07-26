@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "agent": "tsx --env-file=.env agent/loop.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "selfcheck": "tsx agent/loop.selfcheck.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

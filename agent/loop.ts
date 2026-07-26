@@ -4,6 +4,7 @@
 // showing genuine functionCall parts, not tool names written as prose.
 
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { generateWithTools, generateDecision, type LlmMessage } from "../lib/llm.js";
 import { TOOLS, dispatchTool } from "./tools.js";
 import { SYSTEM_PROMPT, CONFIDENCE_THRESHOLD } from "./prompts.js";
@@ -17,6 +18,46 @@ const TOOL_NAMES = TOOLS.map((t) => t.name);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Status is derived from which terminal tool was actually dispatched, never from the model's
+// self-reported output.status alone — otherwise a decision record could claim an action (e.g.
+// "auto_executed") that was never really taken, which is the same class of bug as writing a
+// tool name in prose instead of calling it.
+export function deriveStatus(
+  terminalTool: "ask_human" | "send_reminder_email" | null,
+  confidence: number,
+): DecisionStatus {
+  const belowThreshold = confidence < CONFIDENCE_THRESHOLD;
+  return terminalTool === "ask_human" || belowThreshold ? "ask_human" : "auto_executed";
+}
+
+// Turn budget exhausted without the model taking a real terminal action. This is a genuine
+// operational failure (analogous to a timeout), not a faked escalation — so the caller dispatches
+// this as a real ask_human call and logs it, same as any other tool call, rather than inventing
+// a decision.
+export function buildTurnBudgetEscalation(
+  trail: TrailStep[],
+  invoiceId: string,
+  maxTurns: number,
+): {
+  whatTried: string;
+  whatFound: string;
+  whatUnresolved: string;
+  options: string[];
+  recommendation: string;
+} {
+  return {
+    whatTried: `Called ${trail.length} tool(s) while investigating ${invoiceId}.`,
+    whatFound: trail.length > 0 ? "See the trail above for what each tool returned." : "No data was retrieved.",
+    whatUnresolved: `No confident action was reached within ${maxTurns} reasoning turns.`,
+    options: [
+      "Have a human review the trail above and decide manually.",
+      "Re-run the agent with a higher turn budget in case it simply needed more steps.",
+      "Treat this as a data gap and check whether the seeded invoice/customer records are complete.",
+    ],
+    recommendation: "Manual review required — the agent's turn budget was exhausted.",
+  };
 }
 
 async function runInvoice(invoiceId: string): Promise<Decision> {
@@ -113,20 +154,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   }
 
   if (!terminalTool) {
-    // Turn budget exhausted without the model taking a real terminal action. This is a genuine
-    // operational failure (analogous to a timeout), not a faked escalation — so dispatch a real
-    // ask_human call and log it, same as any other tool call, rather than inventing a decision.
-    const escalationArgs = {
-      whatTried: `Called ${trail.length} tool(s) while investigating ${invoice.id}.`,
-      whatFound: trail.length > 0 ? "See the trail above for what each tool returned." : "No data was retrieved.",
-      whatUnresolved: `No confident action was reached within ${MAX_TOOL_TURNS} reasoning turns.`,
-      options: [
-        "Have a human review the trail above and decide manually.",
-        "Re-run the agent with a higher turn budget in case it simply needed more steps.",
-        "Treat this as a data gap and check whether the seeded invoice/customer records are complete.",
-      ],
-      recommendation: "Manual review required — the agent's turn budget was exhausted.",
-    };
+    const escalationArgs = buildTurnBudgetEscalation(trail, invoice.id, MAX_TOOL_TURNS);
     stepIndex += 1;
     const output = dispatchTool("ask_human", escalationArgs);
     trail.push({
@@ -149,12 +177,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   });
   const output = await generateDecision(messages);
 
-  // Status is derived from which terminal tool was actually dispatched, never from the model's
-  // self-reported output.status alone — otherwise a decision record could claim an action (e.g.
-  // "auto_executed") that was never really taken, which is the same class of bug as writing a
-  // tool name in prose instead of calling it.
-  const belowThreshold = output.confidence < CONFIDENCE_THRESHOLD;
-  const status: DecisionStatus = terminalTool === "ask_human" || belowThreshold ? "ask_human" : "auto_executed";
+  const status: DecisionStatus = deriveStatus(terminalTool, output.confidence);
 
   const decision: Decision = {
     id: decisionId,
@@ -216,7 +239,12 @@ async function main(): Promise<void> {
   console.log(`  Every decision used at least one real tool call: ${allUsedRealTools ? "yes" : "NO — investigate"}`);
 }
 
-main().catch((err) => {
-  console.error("Agent run failed:", err);
-  process.exitCode = 1;
-});
+// Only run the live agent when this file is executed directly (npm run agent), not when it's
+// imported elsewhere for its exported functions (e.g. agent/loop.selfcheck.ts) — otherwise every
+// import would kick off a real Gemini run.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((err) => {
+    console.error("Agent run failed:", err);
+    process.exitCode = 1;
+  });
+}
