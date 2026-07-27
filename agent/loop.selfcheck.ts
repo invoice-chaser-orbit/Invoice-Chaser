@@ -4,14 +4,15 @@
 import assert from "node:assert";
 import { deriveStatus, buildTurnBudgetEscalation } from "./loop.js";
 import { dispatchTool } from "./tools.js";
+import { seedInvoices } from "../data/seed.js";
 import type { TrailStep } from "../lib/types.js";
 
-// deriveStatus: ask_human always escalates regardless of confidence.
-assert.strictEqual(deriveStatus("ask_human", 0.95), "ask_human");
-assert.strictEqual(deriveStatus("ask_human", 0.1), "ask_human");
+// deriveStatus: ask_human always requires human approval regardless of confidence.
+assert.strictEqual(deriveStatus("ask_human", 0.95), "pending_approval");
+assert.strictEqual(deriveStatus("ask_human", 0.1), "pending_approval");
 
-// deriveStatus: send_reminder_email below threshold still escalates.
-assert.strictEqual(deriveStatus("send_reminder_email", 0.59), "ask_human");
+// deriveStatus: send_reminder_email below threshold still requires approval.
+assert.strictEqual(deriveStatus("send_reminder_email", 0.59), "pending_approval");
 
 // deriveStatus: send_reminder_email above threshold auto-executes.
 assert.strictEqual(deriveStatus("send_reminder_email", 0.6), "auto_executed");
@@ -41,5 +42,42 @@ assert.ok(escalation.recommendation.length > 0, "recommendation must be non-empt
 
 // buildTurnBudgetEscalation output must be a real, dispatchable ask_human call.
 assert.doesNotThrow(() => dispatchTool("ask_human", escalation));
+
+// get_dispute_evidence: returns the seeded evidence for the past-dispute fixture (INV-4880).
+const evidence = dispatchTool("get_dispute_evidence", { invoiceId: "INV-4880" }) as {
+  purchaseOrderStatus?: string;
+  deliveryConfirmed?: boolean;
+};
+assert.strictEqual(evidence.purchaseOrderStatus, "matched");
+assert.strictEqual(evidence.deliveryConfirmed, true);
+
+// Dispute guard: send_reminder_email/send_sms_reminder must refuse a disputed invoice instead
+// of simulating a send. None of the 5 locked seed invoices are disputed, so push a synthetic
+// one just for this check, then remove it.
+seedInvoices.push({
+  id: "INV-9999",
+  customerId: "CUST-TEST-DISPUTE",
+  customerName: "Test Disputed Co",
+  amountDue: 1000,
+  currency: "LKR",
+  issueDate: "2026-01-01",
+  dueDate: "2026-01-15",
+  daysOverdue: 5,
+  description: "Self-check fixture only",
+  disputeStatus: "open",
+});
+const blockedEmail = dispatchTool("send_reminder_email", {
+  customerId: "CUST-TEST-DISPUTE",
+  tone: "neutral",
+  message: "test",
+}) as { blocked?: boolean };
+assert.strictEqual(blockedEmail.blocked, true, "send_reminder_email must block a disputed invoice");
+const blockedSms = dispatchTool("send_sms_reminder", {
+  customerId: "CUST-TEST-DISPUTE",
+  tone: "neutral",
+  message: "test",
+}) as { blocked?: boolean };
+assert.strictEqual(blockedSms.blocked, true, "send_sms_reminder must block a disputed invoice");
+seedInvoices.pop();
 
 console.log("agent/loop.selfcheck.ts: all checks passed.");
