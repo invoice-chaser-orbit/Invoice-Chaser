@@ -30,7 +30,7 @@ export function deriveStatus(
   confidence: number,
 ): DecisionStatus {
   const belowThreshold = confidence < CONFIDENCE_THRESHOLD;
-  return terminalTool === "ask_human" || belowThreshold ? "ask_human" : "auto_executed";
+  return terminalTool === "ask_human" || belowThreshold ? "pending_approval" : "auto_executed";
 }
 
 // Turn budget exhausted without the model taking a real terminal action. This is a genuine
@@ -177,7 +177,12 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
       stepIndex = result.step.stepIndex;
       trail.push(result.step);
       toolResults.push({ name: call.name, result: result.output });
-      effectiveToolNames.push(result.effectiveToolName);
+      // A reminder blocked by the dispute guard (agent/tools.ts) is real data returned to the
+      // model, not a completed send — it must not count as the terminal action, or a model that
+      // ignores the dispute rule would still finalize as auto_executed.
+      const isBlocked =
+        typeof result.output === "object" && result.output !== null && (result.output as { blocked?: boolean }).blocked === true;
+      if (!isBlocked) effectiveToolNames.push(result.effectiveToolName);
     }
     messages.push({ role: "tool", toolResults });
     toolTurns += 1;
@@ -219,7 +224,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     reasoning: output.reasoning,
     manualProcedure: output.manualProcedure,
     confidence: output.confidence,
-    escalationReason: status === "ask_human" ? output.escalationReason || output.reasoning : null,
+    escalationReason: status === "pending_approval" ? output.escalationReason || output.reasoning : null,
     status,
     createdAt: new Date().toISOString(),
   };
@@ -266,7 +271,7 @@ async function main(): Promise<void> {
 
   console.log(`\n${"=".repeat(70)}`);
   console.log(`Day 0 gate: ${decisions.length}/${seedInvoices.length} decisions produced.`);
-  console.log(`  Escalated to ask_human: ${decisions.filter((d) => d.status === "ask_human").length}`);
+  console.log(`  Pending human approval: ${decisions.filter((d) => d.status === "pending_approval").length}`);
   const allUsedRealTools = decisions.every((d) => d.trail.length > 0);
   console.log(`  Every decision used at least one real tool call: ${allUsedRealTools ? "yes" : "NO — investigate"}`);
 }
