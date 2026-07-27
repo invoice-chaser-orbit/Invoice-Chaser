@@ -4,11 +4,20 @@
 
 import { GoogleGenerativeAI, SchemaType, type Content, type Part } from "@google/generative-ai";
 
-const MODEL = "gemini-3.5-flash-lite"; // function-calling capable — verified live via a real
-// generateContent call against this project's key on 2026-07-24. gemini-2.5-flash and
-// gemini-2.0-flash are unavailable/zero-quota for this project; gemini-3.6-flash is live but
-// capped at a 20-requests/day free tier, not enough for a week of iteration. See workplan Day 0
-// risk register on stale model names / rate limits.
+const MODEL = "gemini-3.1-flash-lite"; // function-calling capable — verified live via a real
+// generateContent call (with functionDeclarations, returned a genuine functionCall part plus
+// thoughtSignature) against this project's key on 2026-07-27. Re-tested the "lite" tier same day
+// after the AI Studio rate-limit dashboard showed it has by far the best free-tier quota (500
+// requests/day, 15 RPM, 250K TPM) versus every non-lite model capped at 20 requests/day — and
+// gemini-3-flash-preview (this project's previous model) had already peaked at 22/20 that day.
+// gemini-3.5-flash-lite and gemini-2.5-flash-lite still hang to timeout; gemini-3.1-flash-lite
+// specifically no longer does — the earlier "whole lite tier is broken" conclusion doesn't hold
+// for this model as of today. If it starts hanging again, gemini-3-flash-preview is the known-
+// working fallback (see git history), accepting its 20/day ceiling. gemini-2.5-flash/
+// gemini-2.0-flash are unavailable/zero-quota for this project; the "gemini-flash-latest" alias
+// silently resolves server-side to gemini-3.6-flash (also capped at 20/day) — use concrete
+// (non-alias) model names only. See workplan Day 0 risk register on stale model names / rate
+// limits.
 
 // --- Provider-agnostic tool schema -----------------------------------------------------
 // Plain JSON-Schema-shaped, deliberately NOT Gemini's SchemaType enum, so agent/tools.ts
