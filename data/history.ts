@@ -116,3 +116,26 @@ export const paymentTransactions: PaymentTransaction[] = [
   { invoiceId: "INV-3311", customerId: "CUST-004", amountDue: 50000, amountReceived: 49500, shortfallReason: "bank_fee", confirmedByCustomer: true },
   { invoiceId: "INV-3402", customerId: "CUST-004", amountDue: 60000, amountReceived: 55000, shortfallReason: "withholding_tax", confirmedByCustomer: true },
 ];
+
+export interface DisputeEvidence {
+  invoiceId: string;
+  purchaseOrderStatus: "matched" | "mismatched" | "not_found";
+  purchaseOrderNotes: string;
+  deliveryConfirmed: boolean;
+  deliveryNotes: string;
+}
+
+// Evidence for the quality-complaint dispute referenced in CUST-005's notes above (the past
+// INV-4880, not the current seeded INV-5099) — reused as the fixture so the 5 locked scenarios
+// in data/seed.ts stay untouched.
+export const disputeEvidence: DisputeEvidence[] = [
+  {
+    invoiceId: "INV-4880",
+    purchaseOrderStatus: "matched",
+    purchaseOrderNotes: "PO-4880 matches the invoiced line items and quantities.",
+    deliveryConfirmed: true,
+    deliveryNotes:
+      "Delivery confirmed by signed proof-of-delivery. The complaint was about damaged goods " +
+      "on arrival, not non-delivery.",
+  },
+];
