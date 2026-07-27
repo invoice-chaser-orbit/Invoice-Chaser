@@ -1,6 +1,23 @@
 import type { TrailStep } from "../lib/types.js";
 import { saveTrailStep } from "../lib/decisions.js";
 
+export interface RecoveryOptions {
+  decisionId: string;
+  stepIndex: number;
+  toolName: string;
+  input: unknown;
+  primaryCall: () => Promise<unknown>;
+  fallbackCall?: () => Promise<unknown>;
+  maxRetries?: number;
+  retryDelayMs?: number;
+}
+
+export interface RecoveryResult {
+  output: unknown;
+  rungUsed: "primary" | "fallback" | "escalated";
+  step: TrailStep;
+}
+
 export async function withRecovery(options: RecoveryOptions): Promise<RecoveryResult> {
   const { decisionId, stepIndex, toolName, input, primaryCall, fallbackCall, maxRetries = 2, retryDelayMs = 1000 } = options;
 
