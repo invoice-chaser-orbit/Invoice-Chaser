@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "agent": "tsx --env-file=.env agent/loop.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "selfcheck": "tsx agent/loop.selfcheck.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.110.8",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "googleapis": "^173.0.0",
     "open": "^11.0.0"

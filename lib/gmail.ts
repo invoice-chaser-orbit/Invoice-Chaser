@@ -1,14 +1,18 @@
 import { google } from "googleapis";
 import fs from "fs";
 
-const credentials = JSON.parse(fs.readFileSync("credentials.json", "utf-8"));
-const { client_id, client_secret, redirect_uris } = credentials.web;
-const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+let gmail: ReturnType<typeof google.gmail> | null = null;
 
-const token = JSON.parse(fs.readFileSync("token.json", "utf-8"));
-oAuth2Client.setCredentials(token);
-
-const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+function getGmailClient() {
+    if (gmail) return gmail;
+    const credentials = JSON.parse(fs.readFileSync("credentials.json", "utf-8"));
+    const { client_id, client_secret, redirect_uris } = credentials.web;
+    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+    const token = JSON.parse(fs.readFileSync("token.json", "utf-8"));
+    oAuth2Client.setCredentials(token);
+    gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+    return gmail;
+}
 
 export async function sendEmail(
     to: string,
@@ -29,7 +33,7 @@ export async function sendEmail(
         .replace(/\//g, "_")
         .replace(/=+$/, "");
 
-    const res = await gmail.users.messages.send({
+    const res = await getGmailClient().users.messages.send({
         userId: "me",
         requestBody: { raw: encodedMessage },
     });
@@ -41,7 +45,7 @@ export async function pollReplies(
     since: Date
 ): Promise<Array<{ from: string; subject: string; body: string; date: string }>> {
     const afterTimestamp = Math.floor(since.getTime() / 1000);
-    const listRes = await gmail.users.messages.list({
+    const listRes = await getGmailClient().users.messages.list({
         userId: "me",
         q: `after:${afterTimestamp} in:inbox`,
     });
@@ -50,21 +54,25 @@ export async function pollReplies(
     const results = [];
 
     for (const msg of messages) {
-        const full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
-        const headers = full.data.payload?.headers ?? [];
-        const from = headers.find((h) => h.name === "From")?.value ?? "";
-        const subject = headers.find((h) => h.name === "Subject")?.value ?? "";
-        const date = headers.find((h) => h.name === "Date")?.value ?? "";
+        try {
+            const full = await getGmailClient().users.messages.get({ userId: "me", id: msg.id! });
+            const headers = full.data.payload?.headers ?? [];
+            const from = headers.find((h) => h.name === "From")?.value ?? "";
+            const subject = headers.find((h) => h.name === "Subject")?.value ?? "";
+            const date = headers.find((h) => h.name === "Date")?.value ?? "";
 
-        let body = "";
-        const part =
-            full.data.payload?.parts?.find((p) => p.mimeType === "text/plain") ??
-            full.data.payload;
-        if (part?.body?.data) {
-            body = Buffer.from(part.body.data, "base64").toString("utf-8");
+            let body = "";
+            const part =
+                full.data.payload?.parts?.find((p) => p.mimeType === "text/plain") ??
+                full.data.payload;
+            if (part?.body?.data) {
+                body = Buffer.from(part.body.data, "base64").toString("utf-8");
+            }
+
+            results.push({ from, subject, body, date });
+        } catch (err) {
+            console.error(`pollReplies: failed to fetch message ${msg.id}`, err);
         }
-
-        results.push({ from, subject, body, date });
     }
 
     return results;
