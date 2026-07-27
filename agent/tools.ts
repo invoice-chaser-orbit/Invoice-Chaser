@@ -1,11 +1,11 @@
 // Tool definitions + dispatcher. Real function calls the agent chooses and executes against
-// seeded data — not hardcoded branches. Day 0 covers three of the five tool categories
-// (accounting, CRM, email); payments and calendar/SMS are added Day 2. Never import the
-// Gemini SDK here — see lib/llm.ts.
+// seeded data — not hardcoded branches. All five tool categories (accounting, CRM, email,
+// payments, calendar/SMS) are covered. Never import the Gemini SDK here — see lib/llm.ts.
 
 import type { ToolDefinition } from "../lib/llm.js";
 import { seedInvoices } from "../data/seed.js";
-import { customerHistories } from "../data/history.js";
+import { customerHistories, paymentTransactions } from "../data/history.js";
+import { checkForcedFailure } from "./debugToggle.js";
 
 export const TOOLS: ToolDefinition[] = [
   {
@@ -81,9 +81,61 @@ export const TOOLS: ToolDefinition[] = [
       required: ["whatTried", "whatFound", "whatUnresolved", "options", "recommendation"],
     },
   },
+  {
+    name: "get_payment_transactions",
+    description:
+      "Payments system (Stripe/PayHere) lookup: past transactions for a customer, including any " +
+      "recorded shortfalls and their confirmed reason (bank fee, withholding tax, partial " +
+      "payment). Use this to check a current short-payment against this customer's own history " +
+      "before concluding a reason — an empty result is a legitimate answer, not an error.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string", description: "Customer ID, e.g. CUST-001" },
+      },
+      required: ["customerId"],
+    },
+  },
+  {
+    name: "send_sms_reminder",
+    description:
+      "Send a collection reminder SMS to the customer (Twilio/Ideamart). Simulated today, same " +
+      "interface the live adapter will use. Equivalent channel to send_reminder_email — only for " +
+      "pre-approved first-touch reminders.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string" },
+        tone: {
+          type: "string",
+          enum: ["warm", "neutral", "firm"],
+          description: "Chosen based on relationship value and this customer's payment pattern.",
+        },
+        message: { type: "string", description: "The SMS body." },
+      },
+      required: ["customerId", "tone", "message"],
+    },
+  },
+  {
+    name: "schedule_followup",
+    description:
+      "Schedule a future follow-up check for this customer (Google Calendar). Autonomous " +
+      "housekeeping — no human approval needed. Use when a case would benefit from a scheduled " +
+      "recheck instead of an immediate escalation.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string" },
+        followUpDate: { type: "string", description: "ISO date to check back, e.g. 2026-08-01" },
+        reason: { type: "string", description: "Why this follow-up is being scheduled." },
+      },
+      required: ["customerId", "followUpDate", "reason"],
+    },
+  },
 ];
 
 export function dispatchTool(name: string, args: Record<string, unknown>): unknown {
+  checkForcedFailure(name);
   switch (name) {
     case "get_invoice_details": {
       const invoiceId = String(args.invoiceId ?? "");
@@ -115,6 +167,45 @@ export function dispatchTool(name: string, args: Record<string, unknown>): unkno
     }
     case "ask_human": {
       return { received: true, note: "Escalation logged for human review." };
+    }
+    case "get_payment_transactions": {
+      const customerId = String(args.customerId ?? "");
+      const history = customerHistories.find(
+        (h) => h.customerId.toLowerCase() === customerId.toLowerCase(),
+      );
+      if (!history) {
+        return {
+          error:
+            `No CRM/payment history found for customer ID "${customerId}". ` +
+            `Use the exact customerId field from the get_invoice_details result and try again.`,
+        };
+      }
+      return {
+        customerId,
+        transactions: paymentTransactions.filter(
+          (t) => t.customerId.toLowerCase() === customerId.toLowerCase(),
+        ),
+      };
+    }
+    case "send_sms_reminder": {
+      return {
+        simulated: true,
+        messageId: `sim-sms-${Date.now()}`,
+        to: args.customerId,
+        tone: args.tone,
+        channel: "sms",
+        sentAt: new Date().toISOString(),
+      };
+    }
+    case "schedule_followup": {
+      return {
+        simulated: true,
+        eventId: `sim-cal-${Date.now()}`,
+        customerId: args.customerId,
+        followUpDate: args.followUpDate,
+        reason: args.reason,
+        scheduledAt: new Date().toISOString(),
+      };
     }
     default:
       throw new Error(`Unknown tool: ${name}`);
