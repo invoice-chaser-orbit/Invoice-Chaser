@@ -1,5 +1,14 @@
 import type { CustomerHistory } from "../lib/types.js";
 
+export interface PaymentTransaction {
+  invoiceId: string;
+  customerId: string;
+  amountDue: number;
+  amountReceived: number;
+  shortfallReason: "bank_fee" | "withholding_tax" | "partial_payment" | "unexplained";
+  confirmedByCustomer: boolean;
+}
+
 // CRM + payment history the tools read from. Paired 1:1 with data/seed.ts by customerId.
 
 export const customerHistories: CustomerHistory[] = [
@@ -98,4 +107,12 @@ export const customerHistories: CustomerHistory[] = [
       "record whether it was resolved, or whether it relates to the current invoice. Insufficient " +
       "reliable signal to judge tone or urgency with confidence.",
   },
+];
+
+// Payments/Stripe-PayHere transaction history. Deliberately has no record matching the
+// current INV-4002 shortfall — the reconciliation scenario must stay ambiguous, not be
+// resolved by a lookup.
+export const paymentTransactions: PaymentTransaction[] = [
+  { invoiceId: "INV-3311", customerId: "CUST-004", amountDue: 50000, amountReceived: 49500, shortfallReason: "bank_fee", confirmedByCustomer: true },
+  { invoiceId: "INV-3402", customerId: "CUST-004", amountDue: 60000, amountReceived: 55000, shortfallReason: "withholding_tax", confirmedByCustomer: true },
 ];

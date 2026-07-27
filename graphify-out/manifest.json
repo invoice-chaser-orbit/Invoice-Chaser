@@ -1,0 +1,62 @@
+{
+  "agent/loop.ts": {
+    "mtime": 1784920351.3192017,
+    "ast_hash": "aaaf382d07f4b36dee609eca728f1536",
+    "semantic_hash": "aaaf382d07f4b36dee609eca728f1536"
+  },
+  "agent/memory.ts": {
+    "mtime": 1784920351.3192017,
+    "ast_hash": "2f8037fb89f678801cfa81b504bd5d23",
+    "semantic_hash": "2f8037fb89f678801cfa81b504bd5d23"
+  },
+  "agent/prompts.ts": {
+    "mtime": 1784920351.3202193,
+    "ast_hash": "9c6956c7c562d3695a66f1333cf94e49",
+    "semantic_hash": "9c6956c7c562d3695a66f1333cf94e49"
+  },
+  "agent/tools.ts": {
+    "mtime": 1784920351.3202193,
+    "ast_hash": "2d743c625e363950b788b5e1f7746773",
+    "semantic_hash": "2d743c625e363950b788b5e1f7746773"
+  },
+  "data/history.ts": {
+    "mtime": 1784920351.3202193,
+    "ast_hash": "7a3a77502dc202278103ba23ffe1e18c",
+    "semantic_hash": "7a3a77502dc202278103ba23ffe1e18c"
+  },
+  "data/seed.ts": {
+    "mtime": 1784920351.3202193,
+    "ast_hash": "c0d9e8e5712106829a4eb8fd4d7cec83",
+    "semantic_hash": "c0d9e8e5712106829a4eb8fd4d7cec83"
+  },
+  "lib/llm.ts": {
+    "mtime": 1784920351.3212178,
+    "ast_hash": "8b937d646b3771a907b12291068e9141",
+    "semantic_hash": "8b937d646b3771a907b12291068e9141"
+  },
+  "lib/types.ts": {
+    "mtime": 1784920351.3212178,
+    "ast_hash": "316e710b47cfb3cdd5189d630f66e269",
+    "semantic_hash": "316e710b47cfb3cdd5189d630f66e269"
+  },
+  "package.json": {
+    "mtime": 1784920351.3212178,
+    "ast_hash": "09b862f14709395cee85c5ea72c0b7ae",
+    "semantic_hash": "09b862f14709395cee85c5ea72c0b7ae"
+  },
+  "tsconfig.json": {
+    "mtime": 1784920351.32221,
+    "ast_hash": "406ad61ba231693d94f9e3347815b321",
+    "semantic_hash": "406ad61ba231693d94f9e3347815b321"
+  },
+  "CLAUDE.md": {
+    "mtime": 1784923098.251121,
+    "ast_hash": "0665ea8fc263506e023e7fab34058453",
+    "semantic_hash": "0665ea8fc263506e023e7fab34058453"
+  },
+  "workplan.pdf": {
+    "mtime": 1784905288.8076289,
+    "ast_hash": "5a438fde425959c0a8ad4e8e87f2dc0d",
+    "semantic_hash": "5a438fde425959c0a8ad4e8e87f2dc0d"
+  }
+}

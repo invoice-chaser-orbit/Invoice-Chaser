@@ -1,16 +1,14 @@
-// Outcome memory — past decisions inform future ones. In-memory today; Day 2 swaps this for
-// Supabase behind the same two function signatures, so nothing else has to change.
+// Outcome memory — past decisions inform future ones. Now backed by Supabase
+// instead of an in-memory Map, same two function signatures so nothing else changes.
 
 import type { Decision } from "../lib/types.js";
+import { saveDecision, getDecisions } from "../lib/decisions.js";
 
-const outcomesByCustomer = new Map<string, Decision[]>();
-
-export function recordOutcome(decision: Decision): void {
-  const existing = outcomesByCustomer.get(decision.customerId) ?? [];
-  existing.push(decision);
-  outcomesByCustomer.set(decision.customerId, existing);
+export async function recordOutcome(decision: Decision): Promise<void> {
+  await saveDecision(decision);
 }
 
-export function getOutcomesForCustomer(customerId: string): Decision[] {
-  return outcomesByCustomer.get(customerId) ?? [];
+export async function getOutcomesForCustomer(customerId: string): Promise<Decision[]> {
+  const allDecisions = await getDecisions();
+  return allDecisions.filter((d) => d.customerId === customerId);
 }

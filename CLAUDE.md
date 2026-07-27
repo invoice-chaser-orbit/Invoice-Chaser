@@ -164,6 +164,14 @@ Never commit `.env`, `credentials.json`, or `token.json`.
 
 ---
 
+## GIT WORKFLOW WITH CLAUDE CODE
+
+**Claude Code must not run `git commit` or `git push` on this repo unless explicitly told to for that specific change.** Make the file edits, then stop and hand back a per-section breakdown instead: for each logical chunk of work, a suggested commit message and the exact list of files it covers. The human commits and pushes manually.
+
+This applies from 25 July 2026 onward, superseding any earlier session behaviour.
+
+---
+
 ## SCHEDULE
 
 | Day | Date | Ends with |
