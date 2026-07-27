@@ -1,10 +1,11 @@
-import { supabase } from './supabase';
-import type { Decision, TrailStep } from './types';
+import { supabase } from './supabase.js';
+import type { Decision, TrailStep } from './types.js';
 
 //savedecisions()
 export async function saveDecision(decision: Decision): Promise<void> {
-  // 1. Insert the decision itself
-  const { error: decisionError } = await supabase.from('decisions').insert({
+  // 1. Upsert the decision itself — a stub row is written before any trail steps exist
+  // (trail_steps has a FK to decisions.id), then this same call updates it with final fields.
+  const { error: decisionError } = await supabase.from('decisions').upsert({
     id: decision.id,
     invoice_id: decision.invoiceId,
     customer_id: decision.customerId,
@@ -24,7 +25,7 @@ export async function saveDecision(decision: Decision): Promise<void> {
 
   // 2. Insert each trail step, linked to this decision
   if (decision.trail.length > 0) {
-    const trailRows = decision.trail.map((step) => ({
+    const trailRows = decision.trail.map((step: TrailStep) => ({
       decision_id: step.decisionId,
       step_index: step.stepIndex,
       tool_name: step.toolName,
@@ -50,7 +51,7 @@ export async function getDecisions(): Promise<Decision[]> {
     throw new Error(`Failed to fetch decisions: ${error.message}`);
   }
 
-  return data.map((row) => ({
+  return data.map((row: any) => ({
     id: row.id,
     invoiceId: row.invoice_id,
     customerId: row.customer_id,
@@ -77,7 +78,7 @@ export async function getPendingDecisions(): Promise<Decision[]> {
     throw new Error(`Failed to fetch pending decisions: ${error.message}`);
   }
 
-  return data.map((row) => ({
+  return data.map((row: any) => ({
     id: row.id,
     invoiceId: row.invoice_id,
     customerId: row.customer_id,
@@ -105,7 +106,7 @@ export async function getTrail(decisionId: string): Promise<TrailStep[]> {
     throw new Error(`Failed to fetch trail: ${error.message}`);
   }
 
-  return data.map((row) => ({
+  return data.map((row: any) => ({
     decisionId: row.decision_id,
     stepIndex: row.step_index,
     toolName: row.tool_name,

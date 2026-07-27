@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { generateWithTools, generateDecision, type LlmMessage } from "../lib/llm.js";
 import { TOOLS, dispatchTool } from "./tools.js";
+import { withRecovery } from "./recovery.js";
 import { SYSTEM_PROMPT, CONFIDENCE_THRESHOLD } from "./prompts.js";
 import { seedInvoices } from "../data/seed.js";
 import { recordOutcome, getOutcomesForCustomer } from "./memory.js";
@@ -25,7 +26,7 @@ function sleep(ms: number): Promise<void> {
 // "auto_executed") that was never really taken, which is the same class of bug as writing a
 // tool name in prose instead of calling it.
 export function deriveStatus(
-  terminalTool: "ask_human" | "send_reminder_email" | null,
+  terminalTool: "ask_human" | "send_reminder_email" | "send_sms_reminder" | null,
   confidence: number,
 ): DecisionStatus {
   const belowThreshold = confidence < CONFIDENCE_THRESHOLD;
@@ -60,6 +61,35 @@ export function buildTurnBudgetEscalation(
   };
 }
 
+// Routes every tool call through the 4-rung recovery ladder (retry -> fallback -> degrade ->
+// escalate) and persists a trail_steps row per attempt, in real time, via withRecovery.
+async function dispatchWithRecovery(
+  decisionId: string,
+  stepIndex: number,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{ output: unknown; step: TrailStep; effectiveToolName: string }> {
+  const fallbackCall =
+    name === "send_reminder_email"
+      ? async () => dispatchTool("send_sms_reminder", { ...args, note: "email delivery failed" })
+      : undefined;
+
+  const result = await withRecovery({
+    decisionId,
+    stepIndex,
+    toolName: name,
+    input: args,
+    primaryCall: async () => dispatchTool(name, args),
+    fallbackCall,
+  });
+
+  return {
+    output: result.output,
+    step: result.step,
+    effectiveToolName: result.rungUsed === "escalated" ? "ask_human" : name,
+  };
+}
+
 async function runInvoice(invoiceId: string): Promise<Decision> {
   const invoice = seedInvoices.find((inv) => inv.id === invoiceId);
   if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
@@ -72,7 +102,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
 
   // Outcome memory: earlier decisions for this same customer, within this run, feed back into
   // this one — same intent as CLAUDE.md's promise that outcome memory changes future behaviour.
-  const priorOutcomes = getOutcomesForCustomer(invoice.customerId);
+  const priorOutcomes = await getOutcomesForCustomer(invoice.customerId);
   const priorOutcomesText =
     priorOutcomes.length > 0
       ? `\n\nPrior decisions for this customer, earlier in this run:\n${priorOutcomes
@@ -85,6 +115,23 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}` },
   ];
 
+  // Write a stub decision row now — trail_steps rows inserted below reference this decision_id
+  // via a FK, so the parent row must exist before the first tool call, not just at the end.
+  await recordOutcome({
+    id: decisionId,
+    invoiceId: invoice.id,
+    customerId: invoice.customerId,
+    goal,
+    trail: [],
+    action: "",
+    reasoning: "",
+    manualProcedure: [],
+    confidence: 0,
+    escalationReason: null,
+    status: "pending_approval",
+    createdAt: new Date().toISOString(),
+  });
+
   const trail: TrailStep[] = [];
   let stepIndex = 0;
   let toolTurns = 0;
@@ -94,7 +141,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   // intended action. This is the guard against the 21 July bug: tool names written as text
   // instead of genuine function calls. Which tool fired is also what determines the final
   // status below — never the model's self-reported status alone.
-  let terminalTool: "ask_human" | "send_reminder_email" | null = null;
+  let terminalTool: "ask_human" | "send_reminder_email" | "send_sms_reminder" | null = null;
 
   while (toolTurns < MAX_TOOL_TURNS && !terminalTool) {
     if (toolTurns > 0) await sleep(TURN_DELAY_MS);
@@ -123,50 +170,33 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     messages.push({ role: "model", text: response.text, toolCalls: response.toolCalls });
 
     const toolResults: { name: string; result: unknown }[] = [];
+    const effectiveToolNames: string[] = [];
     for (const call of response.toolCalls) {
-      let output: unknown;
-      let success = true;
-      try {
-        output = dispatchTool(call.name, call.args);
-      } catch (err) {
-        output = { error: err instanceof Error ? err.message : String(err) };
-        success = false;
-      }
       stepIndex += 1;
-      trail.push({
-        decisionId,
-        stepIndex,
-        toolName: call.name,
-        input: call.args,
-        output,
-        timestamp: new Date().toISOString(),
-        success,
-      });
-      toolResults.push({ name: call.name, result: output });
+      const result = await dispatchWithRecovery(decisionId, stepIndex, call.name, call.args);
+      stepIndex = result.step.stepIndex;
+      trail.push(result.step);
+      toolResults.push({ name: call.name, result: result.output });
+      effectiveToolNames.push(result.effectiveToolName);
     }
     messages.push({ role: "tool", toolResults });
     toolTurns += 1;
 
-    const calledAskHuman = response.toolCalls.some((call) => call.name === "ask_human");
-    const calledSendEmail = response.toolCalls.some((call) => call.name === "send_reminder_email");
+    const calledAskHuman = effectiveToolNames.includes("ask_human");
+    const calledSendEmail = effectiveToolNames.includes("send_reminder_email");
+    const calledSendSms = effectiveToolNames.includes("send_sms_reminder");
     if (calledAskHuman) terminalTool = "ask_human";
     else if (calledSendEmail) terminalTool = "send_reminder_email";
+    else if (calledSendSms) terminalTool = "send_sms_reminder";
   }
 
   if (!terminalTool) {
     const escalationArgs = buildTurnBudgetEscalation(trail, invoice.id, MAX_TOOL_TURNS);
     stepIndex += 1;
-    const output = dispatchTool("ask_human", escalationArgs);
-    trail.push({
-      decisionId,
-      stepIndex,
-      toolName: "ask_human",
-      input: escalationArgs,
-      output,
-      timestamp: new Date().toISOString(),
-      success: true,
-    });
-    messages.push({ role: "tool", toolResults: [{ name: "ask_human", result: output }] });
+    const result = await dispatchWithRecovery(decisionId, stepIndex, "ask_human", escalationArgs);
+    stepIndex = result.step.stepIndex;
+    trail.push(result.step);
+    messages.push({ role: "tool", toolResults: [{ name: "ask_human", result: result.output }] });
     terminalTool = "ask_human";
   }
 
@@ -194,7 +224,9 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     createdAt: new Date().toISOString(),
   };
 
-  recordOutcome(decision);
+  // Trail rows were already persisted individually, in real time, inside dispatchWithRecovery —
+  // pass an empty trail here so recordOutcome's saveDecision doesn't re-insert them.
+  await recordOutcome({ ...decision, trail: [] });
   return decision;
 }
 
