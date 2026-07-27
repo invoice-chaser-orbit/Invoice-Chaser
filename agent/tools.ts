@@ -4,7 +4,7 @@
 
 import type { ToolDefinition } from "../lib/llm.js";
 import { seedInvoices } from "../data/seed.js";
-import { customerHistories, paymentTransactions } from "../data/history.js";
+import { customerHistories, paymentTransactions, disputeEvidence } from "../data/history.js";
 import { checkForcedFailure } from "./debugToggle.js";
 
 export const TOOLS: ToolDefinition[] = [
@@ -17,6 +17,20 @@ export const TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         invoiceId: { type: "string", description: "Invoice ID, e.g. INV-1043" },
+      },
+      required: ["invoiceId"],
+    },
+  },
+  {
+    name: "get_dispute_evidence",
+    description:
+      "Accounting system lookup: purchase-order match status and delivery confirmation for an " +
+      "invoice under dispute. Call this before deciding anything else when get_invoice_details " +
+      "shows disputeStatus \"open\" — never send a reminder to a disputing customer.",
+    parameters: {
+      type: "object",
+      properties: {
+        invoiceId: { type: "string", description: "Invoice ID, e.g. INV-4880" },
       },
       required: ["invoiceId"],
     },
@@ -41,8 +55,10 @@ export const TOOLS: ToolDefinition[] = [
     description:
       "Send a collection reminder email to the customer. Simulated against a test inbox today " +
       "(same interface the live Gmail adapter will use). Only for pre-approved first-touch " +
-      "reminders — anything beyond that (payment plan, discount, extension, dispute response) " +
-      "must go through ask_human instead.",
+      "reminders — anything beyond that (any escalation beyond a first reminder, a payment plan, " +
+      "a discount, a deadline extension, a dispute response, or a legal/collections handoff) " +
+      "must go through ask_human instead. Blocked automatically if the invoice has an open " +
+      "dispute — use get_dispute_evidence and ask_human instead.",
     parameters: {
       type: "object",
       properties: {
@@ -61,8 +77,9 @@ export const TOOLS: ToolDefinition[] = [
     name: "ask_human",
     description:
       "Escalate to a human operator instead of guessing: confidence is below threshold, or the " +
-      "case needs gated approval (anything beyond a first reminder, a payment plan, a discount, " +
-      "a deadline extension, or a dispute response). Never respond with a bare 'I don't know' — " +
+      "case needs gated approval (any escalation beyond a first reminder, a payment plan, a " +
+      "discount, a deadline extension, a dispute response, or a legal/collections handoff " +
+      "recommendation). Never respond with a bare 'I don't know' — " +
       "this call must carry what was tried, what was found, what remains unresolved, and two or " +
       "three proposed options with a recommendation.",
     parameters: {
@@ -101,7 +118,8 @@ export const TOOLS: ToolDefinition[] = [
     description:
       "Send a collection reminder SMS to the customer (Twilio/Ideamart). Simulated today, same " +
       "interface the live adapter will use. Equivalent channel to send_reminder_email — only for " +
-      "pre-approved first-touch reminders.",
+      "pre-approved first-touch reminders. Blocked automatically if the invoice has an open " +
+      "dispute — use get_dispute_evidence and ask_human instead.",
     parameters: {
       type: "object",
       properties: {
@@ -134,6 +152,24 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
+// ponytail: looks up the disputed invoice by customerId, assuming one invoice per customer in
+// this demo dataset — thread invoiceId through the reminder tools instead if a customer ever
+// carries multiple concurrent invoices.
+function blockIfDisputed(customerId: unknown): { blocked: true; reason: string } | null {
+  const invoice = seedInvoices.find(
+    (inv) => inv.customerId.toLowerCase() === String(customerId ?? "").toLowerCase(),
+  );
+  if (invoice?.disputeStatus === "open") {
+    return {
+      blocked: true,
+      reason:
+        `Invoice ${invoice.id} has an open dispute — reminders are blocked. Call ` +
+        `get_dispute_evidence and route to ask_human instead.`,
+    };
+  }
+  return null;
+}
+
 export function dispatchTool(name: string, args: Record<string, unknown>): unknown {
   checkForcedFailure(name);
   switch (name) {
@@ -141,6 +177,13 @@ export function dispatchTool(name: string, args: Record<string, unknown>): unkno
       const invoiceId = String(args.invoiceId ?? "");
       const invoice = seedInvoices.find((inv) => inv.id.toLowerCase() === invoiceId.toLowerCase());
       return invoice ?? { error: `No invoice found with ID ${invoiceId}` };
+    }
+    case "get_dispute_evidence": {
+      const invoiceId = String(args.invoiceId ?? "");
+      const evidence = disputeEvidence.find(
+        (e) => e.invoiceId.toLowerCase() === invoiceId.toLowerCase(),
+      );
+      return evidence ?? { error: `No dispute evidence found for invoice ID ${invoiceId}` };
     }
     case "get_customer_history": {
       const customerId = String(args.customerId ?? "");
@@ -157,6 +200,8 @@ export function dispatchTool(name: string, args: Record<string, unknown>): unkno
       );
     }
     case "send_reminder_email": {
+      const blocked = blockIfDisputed(args.customerId);
+      if (blocked) return blocked;
       return {
         simulated: true,
         messageId: `sim-${Date.now()}`,
@@ -188,6 +233,8 @@ export function dispatchTool(name: string, args: Record<string, unknown>): unkno
       };
     }
     case "send_sms_reminder": {
+      const blocked = blockIfDisputed(args.customerId);
+      if (blocked) return blocked;
       return {
         simulated: true,
         messageId: `sim-sms-${Date.now()}`,
