@@ -41,10 +41,10 @@ assert.ok(
 assert.ok(escalation.recommendation.length > 0, "recommendation must be non-empty");
 
 // buildTurnBudgetEscalation output must be a real, dispatchable ask_human call.
-assert.doesNotThrow(() => dispatchTool("ask_human", escalation));
+await assert.doesNotReject(() => dispatchTool("ask_human", escalation));
 
 // get_dispute_evidence: returns the seeded evidence for the past-dispute fixture (INV-4880).
-const evidence = dispatchTool("get_dispute_evidence", { invoiceId: "INV-4880" }) as {
+const evidence = (await dispatchTool("get_dispute_evidence", { invoiceId: "INV-4880" })) as {
   purchaseOrderStatus?: string;
   deliveryConfirmed?: boolean;
 };
@@ -66,17 +66,17 @@ seedInvoices.push({
   description: "Self-check fixture only",
   disputeStatus: "open",
 });
-const blockedEmail = dispatchTool("send_reminder_email", {
+const blockedEmail = (await dispatchTool("send_reminder_email", {
   customerId: "CUST-TEST-DISPUTE",
   tone: "neutral",
   message: "test",
-}) as { blocked?: boolean };
+})) as { blocked?: boolean };
 assert.strictEqual(blockedEmail.blocked, true, "send_reminder_email must block a disputed invoice");
-const blockedSms = dispatchTool("send_sms_reminder", {
+const blockedSms = (await dispatchTool("send_sms_reminder", {
   customerId: "CUST-TEST-DISPUTE",
   tone: "neutral",
   message: "test",
-}) as { blocked?: boolean };
+})) as { blocked?: boolean };
 assert.strictEqual(blockedSms.blocked, true, "send_sms_reminder must block a disputed invoice");
 seedInvoices.pop();
 

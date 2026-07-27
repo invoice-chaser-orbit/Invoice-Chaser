@@ -6,6 +6,7 @@ import type { ToolDefinition } from "../lib/llm.js";
 import { seedInvoices } from "../data/seed.js";
 import { customerHistories, paymentTransactions, disputeEvidence } from "../data/history.js";
 import { checkForcedFailure } from "./debugToggle.js";
+import { sendEmail } from "../lib/gmail.js";
 
 export const TOOLS: ToolDefinition[] = [
   {
@@ -170,7 +171,7 @@ function blockIfDisputed(customerId: unknown): { blocked: true; reason: string }
   return null;
 }
 
-export function dispatchTool(name: string, args: Record<string, unknown>): unknown {
+export async function dispatchTool(name: string, args: Record<string, unknown>): Promise<unknown> {
   checkForcedFailure(name);
   switch (name) {
     case "get_invoice_details": {
@@ -202,10 +203,21 @@ export function dispatchTool(name: string, args: Record<string, unknown>): unkno
     case "send_reminder_email": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
+      // ponytail: one shared test inbox plays every debtor (per workplan Day 1 setup), not a
+      // real address per customer — add a per-customer email field if that's ever needed.
+      const to = process.env.DEBTOR_EMAIL;
+      if (!to) throw new Error("DEBTOR_EMAIL is not set (check .env) — cannot send a real reminder email");
+      const invoice = seedInvoices.find(
+        (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
+      );
+      const sent = await sendEmail(
+        to,
+        `Payment reminder — ${invoice?.id ?? args.customerId}`,
+        String(args.message ?? ""),
+      );
       return {
-        simulated: true,
-        messageId: `sim-${Date.now()}`,
-        to: args.customerId,
+        messageId: sent.messageId,
+        to,
         tone: args.tone,
         sentAt: new Date().toISOString(),
       };
