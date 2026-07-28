@@ -208,7 +208,12 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
       );
       const to = invoice?.email;
       if (!to) throw new Error(`No email on file for customer ${args.customerId} — cannot send a real reminder email`);
-
+      if (to.endsWith("@example.com")) {
+        throw new Error(
+          `${to} is still a REPLACE_ME placeholder in data/seed.ts — set a real address before ` +
+            `running the agent live (Gmail send is real, not simulated).`,
+        );
+      }
       const sent = await sendEmail(
         to,
         `Payment reminder — ${invoice.id}`,
