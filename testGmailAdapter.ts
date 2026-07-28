@@ -1,8 +1,9 @@
 import { sendEmail, pollReplies } from "./lib/gmail.js";
+import { seedInvoices } from "./data/seed.js";
 
 async function main() {
     const { messageId } = await sendEmail(
-        "taluni278tp@gmail.com", // replace with your real debtor address
+        seedInvoices[0].email,
         "Adapter test",
         "Testing the reusable sendEmail function."
     );
