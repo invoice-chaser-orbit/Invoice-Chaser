@@ -12,6 +12,7 @@ export interface Invoice {
   daysOverdue: number;
   description: string;
   disputeStatus?: "none" | "open" | "resolved";
+  email: string;
 }
 
 export interface PaymentRecord {

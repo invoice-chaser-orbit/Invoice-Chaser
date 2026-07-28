@@ -65,6 +65,7 @@ seedInvoices.push({
   daysOverdue: 5,
   description: "Self-check fixture only",
   disputeStatus: "open",
+  email: "selfcheck-fixture@example.com",
 });
 const blockedEmail = (await dispatchTool("send_reminder_email", {
   customerId: "CUST-TEST-DISPUTE",

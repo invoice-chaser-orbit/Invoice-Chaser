@@ -203,16 +203,15 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
     case "send_reminder_email": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
-      // ponytail: one shared test inbox plays every debtor (per workplan Day 1 setup), not a
-      // real address per customer — add a per-customer email field if that's ever needed.
-      const to = process.env.DEBTOR_EMAIL;
-      if (!to) throw new Error("DEBTOR_EMAIL is not set (check .env) — cannot send a real reminder email");
       const invoice = seedInvoices.find(
         (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
       );
+      const to = invoice?.email;
+      if (!to) throw new Error(`No email on file for customer ${args.customerId} — cannot send a real reminder email`);
+
       const sent = await sendEmail(
         to,
-        `Payment reminder — ${invoice?.id ?? args.customerId}`,
+        `Payment reminder — ${invoice.id}`,
         String(args.message ?? ""),
       );
       return {
