@@ -5,6 +5,14 @@ let gmail: ReturnType<typeof google.gmail> | null = null;
 
 function getGmailClient() {
     if (gmail) return gmail;
+
+    if (!fs.existsSync("credentials.json") || !fs.existsSync("token.json")) {
+        throw new Error(
+            "Gmail not authenticated: credentials.json or token.json missing. " +
+            "Run `npx tsx gmailAuth.ts` to re-authenticate."
+        );
+    }
+
     const credentials = JSON.parse(fs.readFileSync("credentials.json", "utf-8"));
     const { client_id, client_secret, redirect_uris } = credentials.web;
     const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
@@ -12,6 +20,18 @@ function getGmailClient() {
     oAuth2Client.setCredentials(token);
     gmail = google.gmail({ version: "v1", auth: oAuth2Client });
     return gmail;
+}
+
+const IGNORED_SENDER_PATTERNS = [
+    "mailer-daemon@",
+    "no-reply@",
+    "noreply@",
+    "postmaster@",
+];
+
+function isSystemSender(from: string): boolean {
+    const lower = from.toLowerCase();
+    return IGNORED_SENDER_PATTERNS.some((pattern) => lower.includes(pattern));
 }
 
 export async function sendEmail(
@@ -60,6 +80,8 @@ export async function pollReplies(
             const from = headers.find((h) => h.name === "From")?.value ?? "";
             const subject = headers.find((h) => h.name === "Subject")?.value ?? "";
             const date = headers.find((h) => h.name === "Date")?.value ?? "";
+
+            if (isSystemSender(from)) continue;
 
             let body = "";
             const part =

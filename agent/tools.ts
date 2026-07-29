@@ -200,6 +200,7 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
         }
       );
     }
+    
     case "send_reminder_email": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
@@ -226,6 +227,7 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
         sentAt: new Date().toISOString(),
       };
     }
+
     case "ask_human": {
       return { received: true, note: "Escalation logged for human review." };
     }
