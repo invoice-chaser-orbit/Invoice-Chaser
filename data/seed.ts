@@ -72,6 +72,6 @@ export const seedInvoices: Invoice[] = [
     dueDate: "2026-06-14",
     daysOverdue: 40,
     description: "Freight handling services, Q2",
-    email: "REPLACE_ME.cust005@example.com",
+    email: "REPLACE_ME.cust00@5example.com",
   },
 ];

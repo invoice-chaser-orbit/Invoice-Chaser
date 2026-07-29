@@ -18,6 +18,17 @@ invoices and prints each decision and its full tool-call trail. There is no dash
 persistence layer, and no live inbox polling yet — those are separate pieces of the same
 architecture that aren't part of this code yet.
 
+## What's live vs. simulated
+
+Gmail is a live integration — the agent's collection reminders are sent through a real Gmail
+account using OAuth-authenticated API calls, and replies can be read back from the real inbox.
+The accounting, CRM, payments, and calendar/SMS tools are simulated against seeded data rather
+than connected to real systems like QuickBooks or Twilio. All five tool categories are called by
+the agent as genuine function calls through the same shared tool interface — the difference is
+only in what happens behind that interface, not in how the agent decides to use them. Swapping a
+simulated tool for a real one (e.g. QuickBooks instead of seeded invoice data) is an adapter
+change, not an architecture change.
+
 ## Project structure
 
 ```
