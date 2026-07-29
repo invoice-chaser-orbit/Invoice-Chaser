@@ -11,7 +11,8 @@ import { withRecovery } from "./recovery.js";
 import { SYSTEM_PROMPT, CONFIDENCE_THRESHOLD } from "./prompts.js";
 import { seedInvoices } from "../data/seed.js";
 import { recordOutcome, getOutcomesForCustomer } from "./memory.js";
-import type { Decision, DecisionStatus, TrailStep } from "../lib/types.js";
+import type { ReplyClassification } from "./classifier.js";
+import type { Decision, DecisionStatus, Invoice, TrailStep } from "../lib/types.js";
 
 const TURN_DELAY_MS = 5000; // free-tier is ~10 RPM; without this the gate fails on quota, not code
 const MAX_TOOL_TURNS = 5;
@@ -90,34 +91,22 @@ async function dispatchWithRecovery(
   };
 }
 
-async function runInvoice(invoiceId: string): Promise<Decision> {
-  const invoice = seedInvoices.find((inv) => inv.id === invoiceId);
-  if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
+// Earlier decisions for the same customer, within this run, feed back into the next one — same
+// intent as CLAUDE.md's promise that outcome memory changes future behaviour.
+async function getPriorOutcomesText(customerId: string): Promise<string> {
+  const priorOutcomes = await getOutcomesForCustomer(customerId);
+  return priorOutcomes.length > 0
+    ? `\n\nPrior decisions for this customer, earlier in this run:\n${priorOutcomes
+        .map((d) => `- ${d.action} (status: ${d.status}, confidence: ${d.confidence})`)
+        .join("\n")}`
+    : "";
+}
 
-  const decisionId = randomUUID();
-  const goal =
-    `Decide the right collection action for invoice ${invoice.id} ` +
-    `(${invoice.customerName}, Rs ${invoice.amountDue.toLocaleString()}), minimising overdue ` +
-    `receivables without damaging the relationship.`;
-
-  // Outcome memory: earlier decisions for this same customer, within this run, feed back into
-  // this one — same intent as CLAUDE.md's promise that outcome memory changes future behaviour.
-  const priorOutcomes = await getOutcomesForCustomer(invoice.customerId);
-  const priorOutcomesText =
-    priorOutcomes.length > 0
-      ? `\n\nPrior decisions for this customer, earlier in this run:\n${priorOutcomes
-          .map((d) => `- ${d.action} (status: ${d.status}, confidence: ${d.confidence})`)
-          .join("\n")}`
-      : "";
-
-  const messages: LlmMessage[] = [
-    { role: "system", text: SYSTEM_PROMPT },
-    { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}` },
-  ];
-
-  // Write a stub decision row now — trail_steps rows inserted below reference this decision_id
-  // via a FK, so the parent row must exist before the first tool call, not just at the end.
-  await recordOutcome({
+// Write a stub decision row now — trail_steps rows inserted during reasoning reference this
+// decision_id via a FK, so the parent row must exist before the first tool call, not just at
+// the end.
+function buildStubDecision(decisionId: string, invoice: Invoice, goal: string): Decision {
+  return {
     id: decisionId,
     invoiceId: invoice.id,
     customerId: invoice.customerId,
@@ -130,8 +119,19 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     escalationReason: null,
     status: "pending_approval",
     createdAt: new Date().toISOString(),
-  });
+  };
+}
 
+type TerminalTool = "ask_human" | "send_reminder_email" | "send_sms_reminder";
+
+// Runs the multi-turn tool loop (shared by a fresh daily-scan investigation and a reply-triggered
+// one) until a real terminal tool fires or the turn budget runs out. Mutates `messages` in place
+// so the caller can pass the same array on to finalizeDecision.
+async function runReasoningTurns(
+  decisionId: string,
+  invoiceId: string,
+  messages: LlmMessage[],
+): Promise<{ trail: TrailStep[]; terminalTool: TerminalTool }> {
   const trail: TrailStep[] = [];
   let stepIndex = 0;
   let toolTurns = 0;
@@ -141,7 +141,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   // intended action. This is the guard against the 21 July bug: tool names written as text
   // instead of genuine function calls. Which tool fired is also what determines the final
   // status below — never the model's self-reported status alone.
-  let terminalTool: "ask_human" | "send_reminder_email" | "send_sms_reminder" | null = null;
+  let terminalTool: TerminalTool | null = null;
 
   while (toolTurns < MAX_TOOL_TURNS && !terminalTool) {
     if (toolTurns > 0) await sleep(TURN_DELAY_MS);
@@ -151,7 +151,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
       const fakedToolUse = TOOL_NAMES.some((name) => response.text.includes(name));
       if (fakedToolUse) {
         console.warn(
-          `  [WARN] ${invoice.id}: model described an action in plain text instead of calling ` +
+          `  [WARN] ${invoiceId}: model described an action in plain text instead of calling ` +
             `the tool — nudging it to take a real action.`,
         );
       }
@@ -196,7 +196,7 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   }
 
   if (!terminalTool) {
-    const escalationArgs = buildTurnBudgetEscalation(trail, invoice.id, MAX_TOOL_TURNS);
+    const escalationArgs = buildTurnBudgetEscalation(trail, invoiceId, MAX_TOOL_TURNS);
     stepIndex += 1;
     const result = await dispatchWithRecovery(decisionId, stepIndex, "ask_human", escalationArgs);
     stepIndex = result.step.stepIndex;
@@ -205,6 +205,17 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
     terminalTool = "ask_human";
   }
 
+  return { trail, terminalTool };
+}
+
+async function finalizeDecision(
+  decisionId: string,
+  invoice: Invoice,
+  goal: string,
+  messages: LlmMessage[],
+  trail: TrailStep[],
+  terminalTool: TerminalTool,
+): Promise<Decision> {
   await sleep(TURN_DELAY_MS);
   messages.push({
     role: "user",
@@ -233,6 +244,60 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   // pass an empty trail here so recordOutcome's saveDecision doesn't re-insert them.
   await recordOutcome({ ...decision, trail: [] });
   return decision;
+}
+
+async function runInvoice(invoiceId: string): Promise<Decision> {
+  const invoice = seedInvoices.find((inv) => inv.id === invoiceId);
+  if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
+
+  const decisionId = randomUUID();
+  const goal =
+    `Decide the right collection action for invoice ${invoice.id} ` +
+    `(${invoice.customerName}, Rs ${invoice.amountDue.toLocaleString()}), minimising overdue ` +
+    `receivables without damaging the relationship.`;
+
+  const priorOutcomesText = await getPriorOutcomesText(invoice.customerId);
+  const messages: LlmMessage[] = [
+    { role: "system", text: SYSTEM_PROMPT },
+    { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}` },
+  ];
+
+  await recordOutcome(buildStubDecision(decisionId, invoice, goal));
+  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+}
+
+// Trigger type 2 (inbound email reply — see CLAUDE.md "The loop"). Reuses the exact same
+// reasoning core as runInvoice: the classification is passed in only as a hint inside the prompt
+// text, not as a fixed tool sequence, so the agent still chooses its own tools per rule 5. Always
+// produces a FRESH decision (new decisionId) rather than mutating the original one, same pattern
+// as lib/silenceCheck.ts's silence-timeout escalations.
+export async function runReplyDecision(
+  invoice: Invoice,
+  reply: { from: string; subject: string; body: string; date: string },
+  classification: ReplyClassification,
+): Promise<Decision> {
+  const decisionId = randomUUID();
+  const goal =
+    `Customer ${invoice.customerName} replied regarding invoice ${invoice.id} ` +
+    `(Rs ${invoice.amountDue.toLocaleString()}). The reply has been classified as ` +
+    `"${classification}" — verify this via tools rather than trusting it outright. Decide the ` +
+    `right next action, minimising overdue receivables without damaging the relationship.`;
+
+  const priorOutcomesText = await getPriorOutcomesText(invoice.customerId);
+  const messages: LlmMessage[] = [
+    { role: "system", text: SYSTEM_PROMPT },
+    {
+      role: "user",
+      text:
+        `${goal}\nInvoice ID: ${invoice.id}\nCustomer reply (Subject: "${reply.subject}"):\n` +
+        `"""\n${reply.body.trim()}\n"""${priorOutcomesText}`,
+    },
+  ];
+
+  await recordOutcome(buildStubDecision(decisionId, invoice, goal));
+  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
 }
 
 function printDecision(decision: Decision, invoiceLabel: string): void {
