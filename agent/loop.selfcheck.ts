@@ -3,6 +3,7 @@
 
 import assert from "node:assert";
 import { deriveStatus, buildTurnBudgetEscalation } from "./loop.js";
+import { extractEmailAddress, findInvoiceByEmail } from "./pollReplies.js";
 import { dispatchTool } from "./tools.js";
 import { seedInvoices } from "../data/seed.js";
 import type { TrailStep } from "../lib/types.js";
@@ -80,5 +81,16 @@ const blockedSms = (await dispatchTool("send_sms_reminder", {
 })) as { blocked?: boolean };
 assert.strictEqual(blockedSms.blocked, true, "send_sms_reminder must block a disputed invoice");
 seedInvoices.pop();
+
+// extractEmailAddress: pulls the raw address out of a "Display Name <addr>" From header, or
+// falls back to the header verbatim when there's no angle-bracket form.
+assert.strictEqual(extractEmailAddress('"Lanka Hardware" <cust001@example.com>'), "cust001@example.com");
+assert.strictEqual(extractEmailAddress("plain@example.com"), "plain@example.com");
+
+// findInvoiceByEmail: matches case-insensitively against seeded invoice emails; no match for an
+// address that isn't on file.
+const matchedInvoice = findInvoiceByEmail(`<${seedInvoices[0].email.toUpperCase()}>`);
+assert.strictEqual(matchedInvoice?.id, seedInvoices[0].id);
+assert.strictEqual(findInvoiceByEmail("nobody@nowhere.com"), undefined);
 
 console.log("agent/loop.selfcheck.ts: all checks passed.");

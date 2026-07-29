@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "agent": "tsx --env-file=.env agent/loop.ts",
+    "poll-replies": "tsx --env-file=.env agent/pollReplies.ts",
     "typecheck": "tsc --noEmit",
-    "selfcheck": "tsx --env-file=.env agent/loop.selfcheck.ts"
+    "selfcheck": "tsx --env-file=.env agent/loop.selfcheck.ts && node scripts/scrub-seed-emails.mjs --selfcheck",
+    "prepare": "node scripts/setup-git-hooks.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

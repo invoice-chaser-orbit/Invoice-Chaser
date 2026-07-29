@@ -1,0 +1,5 @@
+# Real customer emails get typed into data/seed.ts locally for reply testing (see
+# agent/pollReplies.ts). This filter scrubs them back to the canonical REPLACE_ME
+# placeholder on `git add`/commit without touching your working copy.
+# Filter is configured locally by scripts/setup-git-hooks.mjs (runs on `npm install`).
+data/seed.ts filter=scrub-seed-emails

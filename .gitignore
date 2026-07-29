@@ -163,3 +163,6 @@ vite.config.ts.timestamp-*
 credentials.json
 token.json
 .env
+
+# Reply-poll cursor (local-machine watermark only, see agent/pollReplies.ts)
+.reply-poll-state.json
