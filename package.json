@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "agent": "tsx --env-file=.env agent/loop.ts",
+    "poll-replies": "tsx --env-file=.env agent/pollReplies.ts",
     "typecheck": "tsc --noEmit",
     "selfcheck": "tsx --env-file=.env agent/loop.selfcheck.ts"
   },
