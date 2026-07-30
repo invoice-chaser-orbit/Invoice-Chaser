@@ -90,7 +90,7 @@ const autonomous = [
 
 export default function HowItWorks() {
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen">
       <SiteNav />
       <PageTransition>
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-12">

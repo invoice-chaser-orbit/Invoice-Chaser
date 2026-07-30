@@ -9,7 +9,7 @@ function getGmailClient() {
     if (!fs.existsSync("credentials.json") || !fs.existsSync("token.json")) {
         throw new Error(
             "Gmail not authenticated: credentials.json or token.json missing. " +
-            "Run `npx tsx gmailAuth.ts` to re-authenticate."
+            "Run `npx tsx scripts/manual/gmailAuth.ts` to re-authenticate."
         );
     }
 

@@ -9,6 +9,7 @@ import { ConfidenceMeter } from "@/components/ui/progress-bar";
 import { PageTransition } from "@/components/ui/motion-primitives";
 import type { CustomerHistory, Decision, Invoice } from "@/lib/types";
 import { formatDateTime, usd } from "@/lib/format";
+import { humanizeToolName } from "@/lib/toolLabels";
 import { cn } from "@/lib/utils";
 
 const TABS = ["Overview", "Audit trail", "Teach-me"] as const;
@@ -109,9 +110,14 @@ function TrailTab({ decision }: { decision: Decision }) {
               <span className="grid h-8 w-8 place-items-center rounded-sm bg-neutral-100 text-caption text-neutral-700">
                 {step.stepIndex + 1}
               </span>
-              <span className="font-mono text-body font-semibold text-neutral-900">
-                {step.toolName}
-              </span>
+              <div>
+                <span className="text-body font-semibold text-neutral-900">
+                  {humanizeToolName(step.toolName)}
+                </span>
+                <span className="ml-2 font-mono text-[11px] text-neutral-400">
+                  {step.toolName}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-caption text-neutral-500">

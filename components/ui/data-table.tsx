@@ -12,7 +12,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-neutral-100 bg-white shadow-sm",
+        "glass glass-white overflow-hidden rounded-lg shadow-sm",
         className,
       )}
     >

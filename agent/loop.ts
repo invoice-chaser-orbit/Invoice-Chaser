@@ -26,12 +26,17 @@ function sleep(ms: number): Promise<void> {
 // self-reported output.status alone — otherwise a decision record could claim an action (e.g.
 // "auto_executed") that was never really taken, which is the same class of bug as writing a
 // tool name in prose instead of calling it.
+//
+// "ask_human" is kept distinct from "pending_approval" (not collapsed into it) so the dashboard
+// can tell a true escalation apart from an ordinary gated reminder — both still land in the same
+// human queue (see getPendingDecisions()), but only a real ask_human call counts toward the
+// "Open escalations" KPI and the "Needs input" filter.
 export function deriveStatus(
   terminalTool: "ask_human" | "send_reminder_email" | "send_sms_reminder" | null,
   confidence: number,
 ): DecisionStatus {
-  const belowThreshold = confidence < CONFIDENCE_THRESHOLD;
-  return terminalTool === "ask_human" || belowThreshold ? "pending_approval" : "auto_executed";
+  if (terminalTool === "ask_human") return "ask_human";
+  return confidence < CONFIDENCE_THRESHOLD ? "pending_approval" : "auto_executed";
 }
 
 // Turn budget exhausted without the model taking a real terminal action. This is a genuine
@@ -325,6 +330,38 @@ export async function runSilenceCheck(
     {
       role: "user",
       text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}`,
+    },
+  ];
+
+  await recordOutcome(buildStubDecision(decisionId, invoice, goal));
+  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+}
+
+// Trigger type 3 (payment webhook — see CLAUDE.md "The loop"). Reuses the exact same reasoning
+// core as the other two triggers: a payment landing does not by itself resolve the case (it may
+// be a short payment, an overpayment, or a duplicate) so the agent re-investigates via real tools
+// (get_invoice_details, get_payment_transactions) rather than auto-closing on the webhook amount.
+export async function runPaymentWebhookDecision(
+  invoice: Invoice,
+  event: { amountReceived: number; transactionId?: string; receivedAt?: string },
+): Promise<Decision> {
+  const decisionId = randomUUID();
+  const goal =
+    `A payment webhook reported Rs ${event.amountReceived.toLocaleString()} received for invoice ` +
+    `${invoice.id} (${invoice.customerName}, amount due Rs ${invoice.amountDue.toLocaleString()})` +
+    `${event.transactionId ? ` [transaction ${event.transactionId}]` : ""}. Verify via tools before ` +
+    `treating this as resolved — it may be a short payment, an overpayment, or a duplicate — then ` +
+    `decide the right next action, minimising overdue receivables without damaging the relationship.`;
+
+  const priorOutcomesText = await getPriorOutcomesText(invoice.customerId);
+  const messages: LlmMessage[] = [
+    { role: "system", text: SYSTEM_PROMPT },
+    {
+      role: "user",
+      text:
+        `${goal}\nInvoice ID to investigate: ${invoice.id}\nWebhook payload: ` +
+        `${JSON.stringify(event)}${priorOutcomesText}`,
     },
   ];
 

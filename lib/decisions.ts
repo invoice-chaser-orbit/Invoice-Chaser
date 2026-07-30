@@ -68,11 +68,13 @@ export async function getDecisions(): Promise<Decision[]> {
 }
 
 //getpendingdecisions()
+// "Needs a human" spans two statuses: ordinary gated approvals and true ask_human escalations —
+// both sit in the same human queue (approve/edit/redirect/override apply to either).
 export async function getPendingDecisions(): Promise<Decision[]> {
   const { data, error } = await supabase
     .from('decisions')
     .select('*')
-    .eq('status', 'pending_approval');
+    .in('status', ['pending_approval', 'ask_human']);
 
   if (error) {
     throw new Error(`Failed to fetch pending decisions: ${error.message}`);

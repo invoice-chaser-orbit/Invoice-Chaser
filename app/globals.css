@@ -40,6 +40,7 @@
 
   --color-info-bg: #eff6ff;
   --color-info-text: #1d4ed8;
+  --color-info-border: #bfdbfe;
 
   --font-sans:
     "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -49,9 +50,11 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
 
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05);
-  --shadow-md: 0 4px 12px rgba(17, 24, 39, 0.08);
-  --shadow-lg: 0 12px 32px rgba(17, 24, 39, 0.12);
+  --shadow-sm: 0 1px 3px rgba(17, 24, 39, 0.08), 0 1px 2px rgba(17, 24, 39, 0.05);
+  --shadow-md: 0 6px 16px rgba(17, 24, 39, 0.12), 0 2px 4px rgba(17, 24, 39, 0.06);
+  --shadow-lg: 0 16px 40px rgba(17, 24, 39, 0.16), 0 4px 10px rgba(17, 24, 39, 0.08);
+
+  --gradient-app: linear-gradient(160deg, var(--color-primary-50) 0%, var(--color-info-bg) 45%, var(--color-success-bg) 300%);
 }
 
 /* shadcn semantic aliases mapped onto the same ramp */
@@ -122,11 +125,51 @@
   }
 
   body {
-    background-color: var(--color-neutral-50);
+    background-image:
+      radial-gradient(rgba(17, 24, 39, 0.2) 1px, transparent 1px),
+      var(--gradient-app);
+    background-size: 20px 20px, auto;
+    background-attachment: fixed, fixed;
     color: var(--color-neutral-900);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+}
+
+/* Glassmorphic surfaces — pair `glass` with a tint utility, e.g. `glass glass-primary` */
+@utility glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+@utility glass-white {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+@utility glass-primary {
+  background: color-mix(in srgb, var(--color-primary-100) 92%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary-300) 60%, transparent);
+}
+
+@utility glass-info {
+  background: color-mix(in srgb, var(--color-info-bg) 94%, var(--color-info-text));
+  border-color: var(--color-info-border);
+}
+
+@utility glass-success {
+  background: color-mix(in srgb, var(--color-success-bg) 94%, var(--color-success-text));
+  border-color: var(--color-success-border);
+}
+
+@utility glass-warning {
+  background: color-mix(in srgb, var(--color-warning-bg) 94%, var(--color-warning-text));
+  border-color: var(--color-warning-border);
+}
+
+@utility glass-danger {
+  background: color-mix(in srgb, var(--color-danger-bg) 94%, var(--color-danger-text));
+  border-color: var(--color-danger-border);
 }
 
 /* Type scale from the board */

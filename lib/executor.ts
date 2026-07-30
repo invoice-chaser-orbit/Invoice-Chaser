@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js';
 import { recordOutcome } from '../agent/memory.js';
+import { sendEmail } from './gmail.js';
+import { getInvoices } from './invoices.js';
 import type { Decision } from './types.js';
 
 export type HumanActionType = 'approve' | 'edit' | 'redirect' | 'override';
@@ -33,6 +35,14 @@ export async function executeHumanAction(decision: Decision, humanAction: HumanA
   // 3. Write back to outcome memory so future decisions reflect this
   await recordOutcome(resolvedDecision);
 
-  // 4. TODO: actually perform the action (send email, etc.) — depends on Taluni's
-  // Gmail adapter being callable from here; wire in once available
+  // 4. Perform the resolved action for real — a human has now signed off on it
+  const invoices = await getInvoices();
+  const invoice = invoices.find((inv) => inv.id === decision.invoiceId);
+  if (invoice?.email) {
+    await sendEmail(
+      invoice.email,
+      `Re: ${decision.invoiceId} — ${humanAction.actionType}`,
+      resolvedDecision.action,
+    );
+  }
 }

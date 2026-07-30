@@ -28,8 +28,8 @@ function Logo() {
 
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between px-6 py-4">
+    <header className="sticky top-4 z-40 px-4 md:px-8">
+      <div className="glass glass-white mx-auto flex h-16 max-w-6xl items-center justify-between rounded-2xl px-6 shadow-lg">
         <Logo />
         <nav className="hidden items-center gap-8 md:flex">
           <Link

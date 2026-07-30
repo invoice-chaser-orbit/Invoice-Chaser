@@ -41,10 +41,13 @@ export function DecisionsList({
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const notificationCount = decisions.filter(
+    (d) => d.status === "pending_approval" || d.status === "ask_human",
+  ).length;
 
   return (
     <PageTransition className="space-y-8">
-      <DashboardTopbar title="decisions" />
+      <DashboardTopbar title="decisions" notificationCount={notificationCount} />
 
       <div>
         <h1 className="text-h2 text-neutral-900">Decisions</h1>

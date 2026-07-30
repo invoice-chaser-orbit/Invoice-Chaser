@@ -1,5 +1,5 @@
-import { sendEmail } from "./lib/gmail.js";
-import { seedInvoices } from "./data/seed.js";
+import { sendEmail } from "../../lib/gmail.js";
+import { seedInvoices } from "../../data/seed.js";
 
 sendEmail(
     seedInvoices[0].email,

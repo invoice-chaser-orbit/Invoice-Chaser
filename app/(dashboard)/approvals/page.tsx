@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { ApprovalsQueue } from "@/components/dashboard/approvals-queue";
-import { getPendingDecisions } from "@/lib/decisions";
+import { getPendingDecisions, getTrail } from "@/lib/decisions";
 import { getInvoices } from "@/lib/invoices";
+import type { TrailStep } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Approval queue — InvoiceChaser",
@@ -15,5 +16,11 @@ export const metadata: Metadata = {
 
 export default async function ApprovalsPage() {
   const [decisions, invoices] = await Promise.all([getPendingDecisions(), getInvoices()]);
-  return <ApprovalsQueue decisions={decisions} invoices={invoices} />;
+  const trails = await Promise.all(decisions.map((d) => getTrail(d.id)));
+  const trailsByDecisionId: Record<string, TrailStep[]> = Object.fromEntries(
+    decisions.map((d, i) => [d.id, trails[i]]),
+  );
+  return (
+    <ApprovalsQueue decisions={decisions} invoices={invoices} trailsByDecisionId={trailsByDecisionId} />
+  );
 }
