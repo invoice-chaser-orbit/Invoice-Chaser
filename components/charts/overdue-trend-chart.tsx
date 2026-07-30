@@ -14,7 +14,7 @@ import {
 export function OverdueTrendChart({
   data,
 }: {
-  data: { month: string; current: number; prior: number }[];
+  data: { month: string; current: number }[];
 }) {
   return (
     <div className="h-64 w-full">

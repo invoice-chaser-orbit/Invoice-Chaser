@@ -17,15 +17,15 @@ export function DashboardSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[88px] flex-col items-center border-r border-neutral-100 bg-white py-6">
+    <aside className="glass glass-white fixed top-4 bottom-4 left-4 z-30 flex w-20 flex-col items-center rounded-[8px] py-6 shadow-lg">
       <Link
         href="/"
         aria-label="InvoiceChaser home"
-        className="grid h-11 w-11 place-items-center rounded-md bg-primary-50"
+        className="grid h-11 w-11 place-items-center rounded-md bg-primary-500"
       >
         <span className="grid grid-cols-2 gap-0.5">
           {[0, 1, 2, 3].map((i) => (
-            <span key={i} className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+            <span key={i} className="h-1.5 w-1.5 rounded-full bg-white" />
           ))}
         </span>
       </Link>
@@ -42,7 +42,7 @@ export function DashboardSidebar() {
                 "grid h-11 w-11 place-items-center rounded-md transition-colors",
                 active
                   ? "bg-primary-50 text-primary-500"
-                  : "text-neutral-500 hover:bg-neutral-50",
+                  : "text-neutral-500 hover:bg-white/60",
               )}
             >
               <item.icon size={20} strokeWidth={2} />
@@ -54,7 +54,13 @@ export function DashboardSidebar() {
   );
 }
 
-export function DashboardTopbar({ title }: { title: string }) {
+export function DashboardTopbar({
+  title,
+  notificationCount = 0,
+}: {
+  title: string;
+  notificationCount?: number;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="relative w-full max-w-sm">
@@ -71,14 +77,14 @@ export function DashboardTopbar({ title }: { title: string }) {
         />
       </div>
       <div className="flex items-center gap-3">
-        <NotificationBell count={2} />
-        <div className="flex items-center gap-3">
+        <NotificationBell count={notificationCount} />
+        {/* <div className="flex items-center gap-3">
           <AvatarCircle name="Holland Reyes" size={44} />
           <div className="hidden sm:block">
             <p className="text-body font-semibold text-neutral-900">Holland</p>
             <p className="text-caption text-neutral-500">AR Manager</p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

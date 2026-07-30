@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Activity, Brain, Eye, Send } from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site/site-shell";
+import { Typewriter } from "@/components/ui/typewriter";
 import { IcButton } from "@/components/ui/ic-button";
 import { OverviewPanel } from "@/components/dashboard/overview-panel";
 import { PageTransition } from "@/components/ui/motion-primitives";
@@ -55,13 +56,13 @@ export default async function Landing() {
   const [invoices, decisions] = await Promise.all([getInvoices(), getDecisions()]);
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen">
       <SiteNav />
       <PageTransition>
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
           <Tag tone="info">sense → reason → act → observe</Tag>
           <h1 className="mx-auto mt-6 max-w-3xl text-h1 text-neutral-900">
-            Same lateness. Different decisions.
+            <Typewriter text="Same lateness. Different decisions." />
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-body-lg text-neutral-500">
             InvoiceChaser runs continuously over your receivables ledger with one
@@ -76,9 +77,9 @@ export default async function Landing() {
 
           <div className="mt-16 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
             <div className="flex items-center gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
-              <span className="h-3 w-3 rounded-full bg-neutral-300" />
-              <span className="h-3 w-3 rounded-full bg-neutral-300" />
-              <span className="h-3 w-3 rounded-full bg-neutral-300" />
+              <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <span className="h-3 w-3 rounded-full bg-[#28c840]" />
               <span className="ml-4 rounded-sm bg-white px-3 py-1 text-caption text-neutral-500">
                 app.invoicechaser.com/overview
               </span>

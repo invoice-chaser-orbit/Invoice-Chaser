@@ -24,8 +24,16 @@ function CountUp({
 
   useEffect(() => spring.on("change", (v) => setDisplay(v)), [spring]);
 
-  return <span ref={ref}>{format ? format(display) : Math.round(display)}</span>;
+  return <span ref={ref}>{format ? format(Math.round(display)) : Math.round(display)}</span>;
 }
+
+const kpiTones = {
+  primary: { glass: "glass-primary", icon: "bg-primary-200 text-primary-600" },
+  info: { glass: "glass-info", icon: "bg-info-border/60 text-info-text" },
+  success: { glass: "glass-success", icon: "bg-success-border/60 text-success-text" },
+  warning: { glass: "glass-warning", icon: "bg-warning-border/60 text-warning-text" },
+  danger: { glass: "glass-danger", icon: "bg-danger-border/60 text-danger-text" },
+} as const;
 
 export function KpiCard({
   label,
@@ -34,6 +42,7 @@ export function KpiCard({
   trend,
   caption,
   icon,
+  tone = "primary",
   className,
 }: {
   label: string;
@@ -42,18 +51,25 @@ export function KpiCard({
   trend?: { direction: "up" | "down"; text: string; good?: boolean };
   caption?: string;
   icon?: React.ReactNode;
+  tone?: keyof typeof kpiTones;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-neutral-100 bg-white p-6 shadow-sm",
+        "glass rounded-lg p-6 shadow-sm",
+        kpiTones[tone].glass,
         className,
       )}
     >
       <div className="flex items-center gap-3">
         {icon && (
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-50 text-primary-500">
+          <span
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center rounded-md",
+              kpiTones[tone].icon,
+            )}
+          >
             {icon}
           </span>
         )}

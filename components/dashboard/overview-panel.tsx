@@ -100,6 +100,7 @@ export function OverviewPanel({
             format={(n) => usd(n, currency)}
             icon={<Wallet size={20} strokeWidth={2} />}
             caption="Outstanding balance across the ledger"
+            tone="primary"
           />
         </StaggerItem>
         <StaggerItem>
@@ -108,6 +109,7 @@ export function OverviewPanel({
             value={pendingApprovals}
             icon={<Clock size={20} strokeWidth={2} />}
             caption="Gated actions awaiting a human"
+            tone="warning"
           />
         </StaggerItem>
         <StaggerItem>
@@ -116,6 +118,7 @@ export function OverviewPanel({
             value={autoExecuted}
             icon={<CheckCircle2 size={20} strokeWidth={2} />}
             caption="Executed on pre-approved policy"
+            tone="success"
           />
         </StaggerItem>
         <StaggerItem>
@@ -124,6 +127,7 @@ export function OverviewPanel({
             value={openEscalations}
             icon={<AlertTriangle size={20} strokeWidth={2} />}
             trend={{ direction: "up", text: "Needs input", good: false }}
+            tone="danger"
           />
         </StaggerItem>
       </StaggerGrid>
@@ -138,6 +142,7 @@ export function OverviewPanel({
               format={(n) => `${n} days`}
               icon={<CalendarClock size={20} strokeWidth={2} />}
               caption="Amount-weighted age of unpaid balances"
+              tone="info"
             />
           </StaggerItem>
           <StaggerItem>
@@ -147,13 +152,14 @@ export function OverviewPanel({
               format={(n) => usd(n, currency)}
               icon={<Banknote size={20} strokeWidth={2} />}
               caption="Sum of amountReceived across the ledger"
+              tone="success"
             />
           </StaggerItem>
         </StaggerGrid>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm lg:col-span-2">
+        <div className="glass glass-white rounded-lg p-6 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-h3 text-neutral-900">Overdue trend</h2>
             <div className="flex items-center gap-4 text-caption text-neutral-500">
@@ -166,7 +172,7 @@ export function OverviewPanel({
             <OverdueTrendChart data={overdueTrend} />
           </div>
         </div>
-        <div className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+        <div className="glass glass-white rounded-lg p-6 shadow-sm">
           <h2 className="text-h3 text-neutral-900">Collection efficiency</h2>
           <div className="mt-8">
             <GaugeChart value={collectionEfficiency} />
@@ -174,7 +180,7 @@ export function OverviewPanel({
         </div>
       </div>
 
-      <div className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+      <div className="glass glass-white rounded-lg p-6 shadow-sm">
         <h2 className="text-h3 text-neutral-900">Recent decisions</h2>
         <div className="mt-4 divide-y divide-neutral-100">
           {recent.map((d) => {
