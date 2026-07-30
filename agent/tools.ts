@@ -4,9 +4,13 @@
 
 import type { ToolDefinition } from "../lib/llm.js";
 import { seedInvoices } from "../data/seed.js";
-import { customerHistories, paymentTransactions, disputeEvidence } from "../data/history.js";
 import { checkForcedFailure } from "./debugToggle.js";
 import { sendEmail } from "../lib/gmail.js";
+import { getInvoiceDetails, getDisputeEvidence } from "../lib/adapters/accounting.js";
+import { getCustomerHistory } from "../lib/adapters/crm.js";
+import { getPaymentTransactions } from "../lib/adapters/payments.js";
+import { sendSmsReminder } from "../lib/adapters/sms.js";
+import { scheduleFollowup } from "../lib/adapters/calendar.js";
 
 export const TOOLS: ToolDefinition[] = [
   {
@@ -175,32 +179,15 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
   checkForcedFailure(name);
   switch (name) {
     case "get_invoice_details": {
-      const invoiceId = String(args.invoiceId ?? "");
-      const invoice = seedInvoices.find((inv) => inv.id.toLowerCase() === invoiceId.toLowerCase());
-      return invoice ?? { error: `No invoice found with ID ${invoiceId}` };
+      return getInvoiceDetails(String(args.invoiceId ?? ""));
     }
     case "get_dispute_evidence": {
-      const invoiceId = String(args.invoiceId ?? "");
-      const evidence = disputeEvidence.find(
-        (e) => e.invoiceId.toLowerCase() === invoiceId.toLowerCase(),
-      );
-      return evidence ?? { error: `No dispute evidence found for invoice ID ${invoiceId}` };
+      return getDisputeEvidence(String(args.invoiceId ?? ""));
     }
     case "get_customer_history": {
-      const customerId = String(args.customerId ?? "");
-      const history = customerHistories.find(
-        (h) => h.customerId.toLowerCase() === customerId.toLowerCase(),
-      );
-      return (
-        history ?? {
-          error:
-            `No CRM/payment history found for customer ID "${customerId}". ` +
-            `Use the exact customerId field from the get_invoice_details result (not the ` +
-            `invoice ID and not the customer name) and try again.`,
-        }
-      );
+      return getCustomerHistory(String(args.customerId ?? ""));
     }
-    
+
     case "send_reminder_email": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
@@ -232,45 +219,15 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
       return { received: true, note: "Escalation logged for human review." };
     }
     case "get_payment_transactions": {
-      const customerId = String(args.customerId ?? "");
-      const history = customerHistories.find(
-        (h) => h.customerId.toLowerCase() === customerId.toLowerCase(),
-      );
-      if (!history) {
-        return {
-          error:
-            `No CRM/payment history found for customer ID "${customerId}". ` +
-            `Use the exact customerId field from the get_invoice_details result and try again.`,
-        };
-      }
-      return {
-        customerId,
-        transactions: paymentTransactions.filter(
-          (t) => t.customerId.toLowerCase() === customerId.toLowerCase(),
-        ),
-      };
+      return getPaymentTransactions(String(args.customerId ?? ""));
     }
     case "send_sms_reminder": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
-      return {
-        simulated: true,
-        messageId: `sim-sms-${Date.now()}`,
-        to: args.customerId,
-        tone: args.tone,
-        channel: "sms",
-        sentAt: new Date().toISOString(),
-      };
+      return sendSmsReminder(args.customerId, args.tone, args.message);
     }
     case "schedule_followup": {
-      return {
-        simulated: true,
-        eventId: `sim-cal-${Date.now()}`,
-        customerId: args.customerId,
-        followUpDate: args.followUpDate,
-        reason: args.reason,
-        scheduledAt: new Date().toISOString(),
-      };
+      return scheduleFollowup(args.customerId, args.followUpDate, args.reason);
     }
     default:
       throw new Error(`Unknown tool: ${name}`);
