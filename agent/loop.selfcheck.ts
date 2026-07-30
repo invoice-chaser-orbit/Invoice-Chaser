@@ -8,9 +8,10 @@ import { dispatchTool } from "./tools.js";
 import { seedInvoices } from "../data/seed.js";
 import type { TrailStep } from "../lib/types.js";
 
-// deriveStatus: ask_human always requires human approval regardless of confidence.
-assert.strictEqual(deriveStatus("ask_human", 0.95), "pending_approval");
-assert.strictEqual(deriveStatus("ask_human", 0.1), "pending_approval");
+// deriveStatus: ask_human is always its own status, regardless of confidence — distinct from
+// an ordinary gated reminder, so the dashboard can tell true escalations apart.
+assert.strictEqual(deriveStatus("ask_human", 0.95), "ask_human");
+assert.strictEqual(deriveStatus("ask_human", 0.1), "ask_human");
 
 // deriveStatus: send_reminder_email below threshold still requires approval.
 assert.strictEqual(deriveStatus("send_reminder_email", 0.59), "pending_approval");

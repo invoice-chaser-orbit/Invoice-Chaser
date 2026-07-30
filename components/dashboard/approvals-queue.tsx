@@ -10,9 +10,11 @@ import { PageTransition } from "@/components/ui/motion-primitives";
 import { StaggerGrid, StaggerItem } from "@/components/ui/kpi-card";
 import { HumanActionDialog } from "@/components/dashboard/human-action-dialog";
 import { formatDateTime, usd } from "@/lib/format";
-import type { Decision, Invoice } from "@/lib/types";
+import type { Decision, Invoice, TrailStep } from "@/lib/types";
 import type { HumanActionType } from "@/lib/executor";
+import { humanizeToolName } from "@/lib/toolLabels";
 import { submitHumanAction } from "@/app/(dashboard)/approvals/actions";
+import { cn } from "@/lib/utils";
 
 const actions: { label: string; type: HumanActionType }[] = [
   { label: "Approve", type: "approve" },
@@ -24,9 +26,11 @@ const actions: { label: string; type: HumanActionType }[] = [
 export function ApprovalsQueue({
   decisions,
   invoices,
+  trailsByDecisionId = {},
 }: {
   decisions: Decision[];
   invoices: Invoice[];
+  trailsByDecisionId?: Record<string, TrailStep[]>;
 }) {
   const [dialog, setDialog] = useState<{
     decision: Decision;
@@ -37,7 +41,7 @@ export function ApprovalsQueue({
   const getInvoice = (invoiceId: string) => invoices.find((i) => i.id === invoiceId);
 
   const queue = [...decisions]
-    .filter((d) => d.status === "pending_approval")
+    .filter((d) => d.status === "pending_approval" || d.status === "ask_human")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   function runAction(decisionId: string, actionType: HumanActionType, fields?: {
@@ -58,7 +62,7 @@ export function ApprovalsQueue({
 
   return (
     <PageTransition className="space-y-8">
-      <DashboardTopbar title="approvals" />
+      <DashboardTopbar title="approvals" notificationCount={queue.length} />
 
       <div>
         <h1 className="text-h2 text-neutral-900">Approval queue</h1>
@@ -73,7 +77,12 @@ export function ApprovalsQueue({
           const busy = isPending && pendingId === d.id;
           return (
             <StaggerItem key={d.id}>
-              <article className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+              <article
+                className={cn(
+                  "glass rounded-lg p-6 shadow-sm",
+                  d.status === "ask_human" ? "glass-warning" : "glass-white",
+                )}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h2 className="text-h3 text-neutral-900">
@@ -97,6 +106,28 @@ export function ApprovalsQueue({
                 <p className="mt-2 line-clamp-3 text-body text-neutral-500">
                   {d.reasoning}
                 </p>
+                {trailsByDecisionId[d.id] && trailsByDecisionId[d.id].length > 0 && (
+                  <ol className="mt-4 space-y-1.5">
+                    {[...trailsByDecisionId[d.id]]
+                      .sort((a, b) => a.stepIndex - b.stepIndex)
+                      .map((step) => (
+                        <li
+                          key={step.stepIndex}
+                          className="flex items-center gap-2 text-caption text-neutral-600"
+                        >
+                          <span
+                            className={
+                              step.success
+                                ? "h-1.5 w-1.5 rounded-full bg-success-text"
+                                : "h-1.5 w-1.5 rounded-full bg-danger-text"
+                            }
+                          />
+                          {step.stepIndex}. {humanizeToolName(step.toolName)}
+                        </li>
+                      ))}
+                  </ol>
+                )}
+
                 <Link
                   href={`/decisions/${d.id}`}
                   className="mt-2 inline-block text-caption text-primary-600 hover:underline"
