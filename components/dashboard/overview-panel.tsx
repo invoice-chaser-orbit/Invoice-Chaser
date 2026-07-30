@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Clock, Wallet } from "lucide-react";
+import { AlertTriangle, Banknote, CalendarClock, CheckCircle2, Clock, Wallet } from "lucide-react";
 import { KpiCard, StaggerGrid, StaggerItem } from "@/components/ui/kpi-card";
 import { TransactionRow } from "@/components/ui/transaction-row";
 import { OverdueTrendChart } from "@/components/charts/overdue-trend-chart";
@@ -9,18 +9,40 @@ import { DashboardTopbar } from "@/components/dashboard/dashboard-shell";
 import type { Decision, Invoice } from "@/lib/types";
 import { usd } from "@/lib/format";
 
-// ponytail: no real analytics pipeline behind this chart — static demo series,
-// add a real trend/efficiency source when one exists.
-const overdueTrend = [
-  { month: "Jan", current: 148000, prior: 162000 },
-  { month: "Feb", current: 141000, prior: 158000 },
-  { month: "Mar", current: 133000, prior: 155000 },
-  { month: "Apr", current: 120000, prior: 149000 },
-  { month: "May", current: 108000, prior: 151000 },
-  { month: "Jun", current: 96000, prior: 144000 },
-  { month: "Jul", current: 84000, prior: 139000 },
-];
-const collectionEfficiency = 0.812;
+// Groups invoices by issue month and sums real outstanding balance per month — the last 7
+// months with data, oldest first. Replaces a static demo series.
+function computeOverdueTrend(invoices: Invoice[]): { month: string; current: number }[] {
+  const byMonth = new Map<string, number>();
+  for (const inv of invoices) {
+    const outstanding = inv.amountDue - (inv.amountReceived ?? 0);
+    if (outstanding <= 0) continue;
+    const key = inv.issueDate.slice(0, 7); // "YYYY-MM"
+    byMonth.set(key, (byMonth.get(key) ?? 0) + outstanding);
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-7)
+    .map(([key, current]) => ({
+      month: new Date(`${key}-01`).toLocaleDateString("en-US", { month: "short" }),
+      current,
+    }));
+}
+
+// Amount-weighted average age (days) of invoices still carrying an outstanding balance — DSO
+// computed from real invoice data, not the demo series above.
+function computeDso(invoices: Invoice[]): number {
+  const today = Date.now();
+  let weightedDays = 0;
+  let totalOutstanding = 0;
+  for (const inv of invoices) {
+    const outstanding = inv.amountDue - (inv.amountReceived ?? 0);
+    if (outstanding <= 0) continue;
+    const ageDays = Math.max(0, Math.floor((today - new Date(inv.issueDate).getTime()) / 86400000));
+    weightedDays += ageDays * outstanding;
+    totalOutstanding += outstanding;
+  }
+  return totalOutstanding > 0 ? Math.round(weightedDays / totalOutstanding) : 0;
+}
 
 export function OverviewPanel({
   invoices,
@@ -34,16 +56,26 @@ export function OverviewPanel({
   const getInvoice = (invoiceId: string) => invoices.find((i) => i.id === invoiceId);
   const currency = invoices[0]?.currency ?? "LKR";
 
-  const totalOverdue = invoices.reduce((sum, i) => sum + i.amountDue, 0);
+  const totalOverdue = invoices.reduce(
+    (sum, i) => sum + Math.max(0, i.amountDue - (i.amountReceived ?? 0)),
+    0,
+  );
   const pendingApprovals = decisions.filter(
     (d) => d.status === "pending_approval",
   ).length;
+  const today = new Date().toDateString();
   const autoExecuted = decisions.filter(
-    (d) => d.status === "auto_executed",
+    (d) => d.status === "auto_executed" && new Date(d.createdAt).toDateString() === today,
   ).length;
   const openEscalations = decisions.filter(
     (d) => d.status === "ask_human",
   ).length;
+  const dso = computeDso(invoices);
+  const amountRecovered = invoices.reduce((sum, i) => sum + (i.amountReceived ?? 0), 0);
+  const totalBilled = invoices.reduce((sum, i) => sum + i.amountDue, 0);
+  const collectionEfficiency = totalBilled > 0 ? amountRecovered / totalBilled : 0;
+  const overdueTrend = computeOverdueTrend(invoices);
+  const notificationCount = pendingApprovals + openEscalations;
 
   const recent = [...decisions]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -51,7 +83,7 @@ export function OverviewPanel({
 
   return (
     <div className="space-y-8">
-      {!compact && <DashboardTopbar title="dashboard" />}
+      {!compact && <DashboardTopbar title="dashboard" notificationCount={notificationCount} />}
 
       <div>
         <h1 className="text-h2 text-neutral-900">Dashboard</h1>
@@ -67,7 +99,7 @@ export function OverviewPanel({
             value={totalOverdue}
             format={(n) => usd(n, currency)}
             icon={<Wallet size={20} strokeWidth={2} />}
-            trend={{ direction: "down", text: "12% vs last month" }}
+            caption="Outstanding balance across the ledger"
           />
         </StaggerItem>
         <StaggerItem>
@@ -96,17 +128,37 @@ export function OverviewPanel({
         </StaggerItem>
       </StaggerGrid>
 
+      <div>
+        <h2 className="text-h3 text-neutral-900">Cash-flow summary</h2>
+        <StaggerGrid className="mt-4 grid gap-6 sm:grid-cols-2">
+          <StaggerItem>
+            <KpiCard
+              label="Days sales outstanding"
+              value={dso}
+              format={(n) => `${n} days`}
+              icon={<CalendarClock size={20} strokeWidth={2} />}
+              caption="Amount-weighted age of unpaid balances"
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <KpiCard
+              label="Recovered this cycle"
+              value={amountRecovered}
+              format={(n) => usd(n, currency)}
+              icon={<Banknote size={20} strokeWidth={2} />}
+              caption="Sum of amountReceived across the ledger"
+            />
+          </StaggerItem>
+        </StaggerGrid>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-h3 text-neutral-900">Overdue trend</h2>
             <div className="flex items-center gap-4 text-caption text-neutral-500">
               <span className="inline-flex items-center gap-2">
-                <span className="h-0.5 w-5 bg-primary-500" /> This period
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-0.5 w-5 border-t-2 border-dashed border-neutral-300" />
-                Prior period
+                <span className="h-0.5 w-5 bg-primary-500" /> Outstanding balance
               </span>
             </div>
           </div>
