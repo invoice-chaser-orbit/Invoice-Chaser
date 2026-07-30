@@ -1,8 +1,19 @@
 create extension if not exists pgcrypto;
 
+-- Present in the live Supabase project but never read or written by any code path (data/history.ts
+-- is the actual, in-memory source for this data). Documented here for completeness, and defined
+-- before invoices/decisions because invoices.customer_id carries a live FK to it.
+create table customers (
+  customer_id text primary key,
+  customer_name text not null,
+  relationship_years integer not null,
+  annual_revenue numeric not null,
+  notes text
+);
+
 create table invoices (
   id text primary key,
-  customer_id text not null,
+  customer_id text not null references customers(customer_id),
   customer_name text not null,
   amount_due numeric not null,
   amount_received numeric,
@@ -34,8 +45,8 @@ create table trail_steps (
   decision_id text not null references decisions(id) on delete cascade,
   step_index integer not null,
   tool_name text not null,
-  input jsonb,
-  output jsonb,
+  input jsonb not null,
+  output jsonb not null,
   timestamp timestamptz not null,
   success boolean not null,
   primary key (decision_id, step_index)
@@ -55,17 +66,7 @@ create index on decisions (status);
 create index on trail_steps (decision_id);
 create index on human_actions (decision_id);
 
--- Present in the live Supabase project but never read or written by any code path (data/history.ts
--- is the actual, in-memory source for this data). Documented here for completeness; safe to ignore
--- or drop if the CRM/payment-history migration into Supabase never happens.
-create table customers (
-  customer_id text primary key,
-  customer_name text not null,
-  relationship_years integer not null,
-  annual_revenue numeric not null,
-  notes text
-);
-
+-- The three tables below share customers' "documented but unused by app code" status.
 create table open_deals (
   id bigint generated always as identity primary key,
   customer_id text not null references customers(customer_id),
