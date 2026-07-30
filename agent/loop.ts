@@ -300,6 +300,39 @@ export async function runReplyDecision(
   return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
 }
 
+// Trigger type 3 (silence timeout — no reply within N days of a prior action). Reuses the exact
+// same reasoning core as runInvoice/runReplyDecision: the agent re-investigates via real tools
+// (e.g. check_payment_gateway) rather than assuming silence means non-payment. This means a
+// customer who paid without replying gets discovered and closed quietly, not wrongly escalated.
+export async function runSilenceCheck(
+  invoiceId: string,
+  priorDecisionId: string,
+  daysSinceLastAction: number,
+): Promise<Decision> {
+  const invoice = seedInvoices.find((inv) => inv.id === invoiceId);
+  if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
+
+  const decisionId = randomUUID();
+  const goal =
+    `No reply from ${invoice.customerName} in ${daysSinceLastAction} days since the last action ` +
+    `on invoice ${invoice.id} (decision ${priorDecisionId}). Investigate via tools before ` +
+    `assuming non-payment — check for a payment that may have arrived without a reply, then ` +
+    `decide the right next action.`;
+
+  const priorOutcomesText = await getPriorOutcomesText(invoice.customerId);
+  const messages: LlmMessage[] = [
+    { role: "system", text: SYSTEM_PROMPT },
+    {
+      role: "user",
+      text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}`,
+    },
+  ];
+
+  await recordOutcome(buildStubDecision(decisionId, invoice, goal));
+  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+}
+
 function printDecision(decision: Decision, invoiceLabel: string): void {
   console.log(`\n${"=".repeat(70)}`);
   console.log(`DECISION — ${invoiceLabel}`);
