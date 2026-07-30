@@ -1,8 +1,8 @@
-import { forceToolFailure } from "./agent/debugToggle.js";
-import { dispatchTool } from "./agent/tools.js";
-import { withRecovery } from "./agent/recovery.js";
-import { recordOutcome } from "./agent/memory.js";
-import { seedInvoices } from "./data/seed.js";
+import { forceToolFailure } from "../../agent/debugToggle.js";
+import { dispatchTool } from "../../agent/tools.js";
+import { withRecovery } from "../../agent/recovery.js";
+import { recordOutcome } from "../../agent/memory.js";
+import { seedInvoices } from "../../data/seed.js";
 import { randomUUID } from "node:crypto";
 
 async function main() {

@@ -1,5 +1,5 @@
-import { dispatchTool } from "./agent/tools.js";
-import { seedInvoices } from "./data/seed.js";
+import { dispatchTool } from "../../agent/tools.js";
+import { seedInvoices } from "../../data/seed.js";
 
 async function main() {
     // Pick 2-3 different customers to test variety

@@ -1,5 +1,5 @@
-import { sendEmail, pollReplies } from "./lib/gmail.js";
-import { seedInvoices } from "./data/seed.js";
+import { sendEmail, pollReplies } from "../../lib/gmail.js";
+import { seedInvoices } from "../../data/seed.js";
 
 async function main() {
     const { messageId } = await sendEmail(
