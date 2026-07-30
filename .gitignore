@@ -166,3 +166,25 @@ token.json
 
 # Reply-poll cursor (local-machine watermark only, see agent/pollReplies.ts)
 .reply-poll-state.json
+
+# Frontend (Next.js/formerly Vite-TanStack) build artifacts
+pnpm-debug.log*
+dist-ssr
+.tanstack/**
+.nitro
+.vinxi
+*.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
