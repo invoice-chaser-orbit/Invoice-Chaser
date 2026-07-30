@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "agent": "tsx --env-file=.env agent/loop.ts",
     "poll-replies": "tsx --env-file=.env agent/pollReplies.ts",
+    "webhook": "tsx --env-file=.env agent/paymentWebhook.ts",
     "typecheck": "tsc --noEmit -p tsconfig.backend.json && tsc --noEmit",
     "selfcheck": "tsx --env-file=.env agent/loop.selfcheck.ts && tsx --env-file=.env agent/classifier.selfcheck.ts && node scripts/scrub-seed-emails.mjs --selfcheck",
     "prepare": "node scripts/setup-git-hooks.mjs"
@@ -72,6 +73,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
