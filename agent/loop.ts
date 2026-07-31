@@ -397,18 +397,30 @@ function printDecision(decision: Decision, invoiceLabel: string): void {
   decision.manualProcedure.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
 }
 
-async function main(): Promise<void> {
-  console.log(`Running InvoiceChaser agent over ${seedInvoices.length} seeded invoices...`);
+// Trigger type 1 (daily ledger scan). Iterates the seeded ledger through the same reasoning core
+// as every other trigger. Exported so both the CLI entrypoint (main, below) and the dashboard's
+// "Run agent" action drive the identical scan — the callback lets a caller observe each decision
+// as it lands rather than waiting for the whole batch.
+export async function runDailyScan(
+  onDecision?: (decision: Decision, invoice: Invoice) => void,
+): Promise<Decision[]> {
   const decisions: Decision[] = [];
-
   for (let i = 0; i < seedInvoices.length; i++) {
     const invoice = seedInvoices[i];
     console.log(`\nInvestigating ${invoice.id} (${invoice.customerName})...`);
     const decision = await runInvoice(invoice.id);
     decisions.push(decision);
-    printDecision(decision, `${invoice.id} — ${invoice.customerName}`);
+    onDecision?.(decision, invoice);
     if (i < seedInvoices.length - 1) await sleep(TURN_DELAY_MS);
   }
+  return decisions;
+}
+
+async function main(): Promise<void> {
+  console.log(`Running InvoiceChaser agent over ${seedInvoices.length} seeded invoices...`);
+  const decisions = await runDailyScan((decision, invoice) =>
+    printDecision(decision, `${invoice.id} — ${invoice.customerName}`),
+  );
 
   console.log(`\n${"=".repeat(70)}`);
   console.log(`Day 0 gate: ${decisions.length}/${seedInvoices.length} decisions produced.`);
