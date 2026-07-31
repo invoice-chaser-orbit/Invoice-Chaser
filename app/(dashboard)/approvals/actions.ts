@@ -8,6 +8,7 @@ export async function submitHumanAction(decisionId: string, humanAction: HumanAc
   const decisions = await getDecisions();
   const decision = decisions.find((d) => d.id === decisionId);
   if (!decision) throw new Error(`Decision ${decisionId} not found`);
-  await executeHumanAction({ ...decision, trail: [] }, humanAction);
+  const result = await executeHumanAction({ ...decision, trail: [] }, humanAction);
   revalidatePath("/approvals");
+  return result;
 }

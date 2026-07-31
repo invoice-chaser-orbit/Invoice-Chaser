@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-shell";
 import { IcButton } from "@/components/ui/ic-button";
 import { StatusTag } from "@/components/ui/status-tag";
@@ -56,7 +57,16 @@ export function ApprovalsQueue({
     setPendingId(decisionId);
     startTransition(async () => {
       try {
-        await submitHumanAction(decisionId, { actionType, ...fields });
+        const result = await submitHumanAction(decisionId, { actionType, ...fields });
+        if (result.emailSent) {
+          const decision = decisions.find((d) => d.id === decisionId);
+          const invoice = decision && getInvoice(decision.invoiceId);
+          toast.success("Email sent", {
+            description: invoice
+              ? `${invoice.customerName} was notified about ${decision.invoiceId}.`
+              : "The customer was notified.",
+          });
+        }
         setDialog(null);
       } finally {
         setPendingId(null);

@@ -16,7 +16,7 @@ export interface HumanAction {
 export async function executeHumanAction(
   decision: Decision,
   humanAction: HumanAction,
-): Promise<void> {
+): Promise<{ emailSent: boolean }> {
   // 1. Record the human's action for the audit trail
   const { error } = await supabase.from("human_actions").insert({
     decision_id: decision.id,
@@ -41,11 +41,15 @@ export async function executeHumanAction(
   // 4. Perform the resolved action for real — a human has now signed off on it
   const invoices = await getInvoices();
   const invoice = invoices.find((inv) => inv.id === decision.invoiceId);
+  let emailSent = false;
   if (invoice?.email) {
     await sendEmail(
       invoice.email,
       `Re: ${decision.invoiceId} — ${humanAction.actionType}`,
       resolvedDecision.action,
     );
+    emailSent = true;
   }
+
+  return { emailSent };
 }
