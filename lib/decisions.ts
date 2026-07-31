@@ -1,11 +1,11 @@
-import { supabase } from './supabase.js';
-import type { Decision, TrailStep } from './types.js';
+import { supabase } from "./supabase.js";
+import type { Decision, TrailStep } from "./types.js";
 
 //savedecisions()
 export async function saveDecision(decision: Decision): Promise<void> {
   // 1. Upsert the decision itself — a stub row is written before any trail steps exist
   // (trail_steps has a FK to decisions.id), then this same call updates it with final fields.
-  const { error: decisionError } = await supabase.from('decisions').upsert({
+  const { error: decisionError } = await supabase.from("decisions").upsert({
     id: decision.id,
     invoice_id: decision.invoiceId,
     customer_id: decision.customerId,
@@ -35,7 +35,7 @@ export async function saveDecision(decision: Decision): Promise<void> {
       success: step.success,
     }));
 
-    const { error: trailError } = await supabase.from('trail_steps').insert(trailRows);
+    const { error: trailError } = await supabase.from("trail_steps").insert(trailRows);
 
     if (trailError) {
       throw new Error(`Failed to save trail steps: ${trailError.message}`);
@@ -45,13 +45,13 @@ export async function saveDecision(decision: Decision): Promise<void> {
 
 //getdecisions()
 export async function getDecisions(): Promise<Decision[]> {
-  const { data, error } = await supabase.from('decisions').select('*');
+  const { data, error } = await supabase.from("decisions").select("*");
 
   if (error) {
     throw new Error(`Failed to fetch decisions: ${error.message}`);
   }
 
-  return data.map((row: any) => ({
+  return data.map((row) => ({
     id: row.id,
     invoiceId: row.invoice_id,
     customerId: row.customer_id,
@@ -72,15 +72,15 @@ export async function getDecisions(): Promise<Decision[]> {
 // both sit in the same human queue (approve/edit/redirect/override apply to either).
 export async function getPendingDecisions(): Promise<Decision[]> {
   const { data, error } = await supabase
-    .from('decisions')
-    .select('*')
-    .in('status', ['pending_approval', 'ask_human']);
+    .from("decisions")
+    .select("*")
+    .in("status", ["pending_approval", "ask_human"]);
 
   if (error) {
     throw new Error(`Failed to fetch pending decisions: ${error.message}`);
   }
 
-  return data.map((row: any) => ({
+  return data.map((row) => ({
     id: row.id,
     invoiceId: row.invoice_id,
     customerId: row.customer_id,
@@ -99,16 +99,16 @@ export async function getPendingDecisions(): Promise<Decision[]> {
 //getTrail(decisionId)
 export async function getTrail(decisionId: string): Promise<TrailStep[]> {
   const { data, error } = await supabase
-    .from('trail_steps')
-    .select('*')
-    .eq('decision_id', decisionId)
-    .order('step_index', { ascending: true });
+    .from("trail_steps")
+    .select("*")
+    .eq("decision_id", decisionId)
+    .order("step_index", { ascending: true });
 
   if (error) {
     throw new Error(`Failed to fetch trail: ${error.message}`);
   }
 
-  return data.map((row: any) => ({
+  return data.map((row) => ({
     decisionId: row.decision_id,
     stepIndex: row.step_index,
     toolName: row.tool_name,
@@ -121,7 +121,7 @@ export async function getTrail(decisionId: string): Promise<TrailStep[]> {
 
 //saveTrailStep()
 export async function saveTrailStep(step: TrailStep): Promise<void> {
-  const { error } = await supabase.from('trail_steps').insert({
+  const { error } = await supabase.from("trail_steps").insert({
     decision_id: step.decisionId,
     step_index: step.stepIndex,
     tool_name: step.toolName,
@@ -136,16 +136,15 @@ export async function saveTrailStep(step: TrailStep): Promise<void> {
   }
 }
 
-
 //small get/set functions
 export async function setDisputeStatus(
   invoiceId: string,
-  status: "none" | "open" | "resolved"
+  status: "none" | "open" | "resolved",
 ): Promise<void> {
   const { error } = await supabase
-    .from('invoices')
+    .from("invoices")
     .update({ dispute_status: status })
-    .eq('id', invoiceId);
+    .eq("id", invoiceId);
 
   if (error) {
     throw new Error(`Failed to set dispute status: ${error.message}`);
@@ -154,9 +153,9 @@ export async function setDisputeStatus(
 
 export async function getDisputeStatus(invoiceId: string): Promise<"none" | "open" | "resolved"> {
   const { data, error } = await supabase
-    .from('invoices')
-    .select('dispute_status')
-    .eq('id', invoiceId)
+    .from("invoices")
+    .select("dispute_status")
+    .eq("id", invoiceId)
     .single();
 
   if (error) {

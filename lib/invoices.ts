@@ -6,7 +6,7 @@ export async function getInvoices(): Promise<Invoice[]> {
   const { data, error } = await supabase.from("invoices").select("*");
   if (error || !data || data.length === 0) return seedInvoices; // ponytail: unverified table, seed fallback keeps demo alive
 
-  return data.map((row: any) => ({
+  return data.map((row) => ({
     id: row.id,
     customerId: row.customer_id,
     customerName: row.customer_name,
