@@ -85,7 +85,10 @@ seedInvoices.pop();
 
 // extractEmailAddress: pulls the raw address out of a "Display Name <addr>" From header, or
 // falls back to the header verbatim when there's no angle-bracket form.
-assert.strictEqual(extractEmailAddress('"Lanka Hardware" <cust001@example.com>'), "cust001@example.com");
+assert.strictEqual(
+  extractEmailAddress('"Lanka Hardware" <cust001@example.com>'),
+  "cust001@example.com",
+);
 assert.strictEqual(extractEmailAddress("plain@example.com"), "plain@example.com");
 
 // findInvoiceByEmail: matches case-insensitively against seeded invoice emails; no match for an

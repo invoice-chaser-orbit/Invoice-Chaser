@@ -19,9 +19,12 @@ async function main(): Promise<void> {
   if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
 
   const amountReceived = Number(amountReceivedArg);
-  if (Number.isNaN(amountReceived)) throw new Error(`Invalid amountReceived: "${amountReceivedArg}"`);
+  if (Number.isNaN(amountReceived))
+    throw new Error(`Invalid amountReceived: "${amountReceivedArg}"`);
 
-  console.log(`Simulating payment webhook: ${invoiceId} received Rs ${amountReceived.toLocaleString()}...`);
+  console.log(
+    `Simulating payment webhook: ${invoiceId} received Rs ${amountReceived.toLocaleString()}...`,
+  );
   const decision = await runPaymentWebhookDecision(invoice, {
     amountReceived,
     transactionId,

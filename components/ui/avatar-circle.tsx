@@ -28,11 +28,7 @@ export function AvatarCircle({
 
   if (src) {
     return (
-      <img
-        src={src}
-        alt={name}
-        className={cn("rounded-full object-cover", s.box, className)}
-      />
+      <img src={src} alt={name} className={cn("rounded-full object-cover", s.box, className)} />
     );
   }
 

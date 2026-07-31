@@ -2,7 +2,11 @@
 // function with the same signature; agent/tools.ts's dispatcher would not change — only this
 // file would.
 
-export async function scheduleFollowup(customerId: unknown, followUpDate: unknown, reason: unknown) {
+export async function scheduleFollowup(
+  customerId: unknown,
+  followUpDate: unknown,
+  reason: unknown,
+) {
   return {
     simulated: true,
     eventId: `sim-cal-${Date.now()}`,

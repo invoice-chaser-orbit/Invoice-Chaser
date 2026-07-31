@@ -40,9 +40,7 @@ export function DashboardSidebar() {
               title={item.label}
               className={cn(
                 "grid h-11 w-11 place-items-center rounded-md transition-colors",
-                active
-                  ? "bg-primary-50 text-primary-500"
-                  : "text-neutral-500 hover:bg-white/60",
+                active ? "bg-primary-50 text-primary-500" : "text-neutral-500 hover:bg-white/60",
               )}
             >
               <item.icon size={20} strokeWidth={2} />

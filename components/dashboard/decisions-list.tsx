@@ -77,16 +77,7 @@ export function DecisionsList({
         ))}
       </div>
 
-      <DataTable
-        headers={[
-          "Customer",
-          "Action",
-          "Amount",
-          "Confidence",
-          "Created",
-          "Status",
-        ]}
-      >
+      <DataTable headers={["Customer", "Action", "Amount", "Confidence", "Created", "Status"]}>
         {current.map((d) => {
           const invoice = getInvoice(d.invoiceId);
           return (
@@ -115,9 +106,7 @@ export function DecisionsList({
               <DataCell>
                 <ConfidenceMeter value={d.confidence} />
               </DataCell>
-              <DataCell className="whitespace-nowrap">
-                {formatDateTime(d.createdAt)}
-              </DataCell>
+              <DataCell className="whitespace-nowrap">{formatDateTime(d.createdAt)}</DataCell>
               <DataCell>
                 <StatusTag status={d.status} />
               </DataCell>

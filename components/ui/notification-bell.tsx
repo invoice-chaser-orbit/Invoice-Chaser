@@ -3,13 +3,7 @@
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function NotificationBell({
-  count = 0,
-  className,
-}: {
-  count?: number;
-  className?: string;
-}) {
+export function NotificationBell({ count = 0, className }: { count?: number; className?: string }) {
   return (
     <button
       type="button"
@@ -20,9 +14,7 @@ export function NotificationBell({
       )}
     >
       <Bell size={20} strokeWidth={2} className="text-neutral-500" />
-      {count > 0 && (
-        <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500" />
-      )}
+      {count > 0 && <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500" />}
     </button>
   );
 }

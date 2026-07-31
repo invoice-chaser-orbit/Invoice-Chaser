@@ -1,7 +1,10 @@
 import type { DecisionStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATUS_META: Record<DecisionStatus, { label: string; tone: "success" | "warning" | "danger" }> = {
+const STATUS_META: Record<
+  DecisionStatus,
+  { label: string; tone: "success" | "warning" | "danger" }
+> = {
   auto_executed: { label: "Auto-executed", tone: "success" },
   pending_approval: { label: "Pending approval", tone: "warning" },
   ask_human: { label: "Needs input", tone: "danger" },
@@ -37,13 +40,7 @@ export function Tag({
   );
 }
 
-export function StatusTag({
-  status,
-  className,
-}: {
-  status: DecisionStatus;
-  className?: string;
-}) {
+export function StatusTag({ status, className }: { status: DecisionStatus; className?: string }) {
   const meta = STATUS_META[status];
   return (
     <Tag tone={meta.tone} className={className}>

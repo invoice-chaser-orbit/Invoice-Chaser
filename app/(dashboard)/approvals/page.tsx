@@ -21,6 +21,10 @@ export default async function ApprovalsPage() {
     decisions.map((d, i) => [d.id, trails[i]]),
   );
   return (
-    <ApprovalsQueue decisions={decisions} invoices={invoices} trailsByDecisionId={trailsByDecisionId} />
+    <ApprovalsQueue
+      decisions={decisions}
+      invoices={invoices}
+      trailsByDecisionId={trailsByDecisionId}
+    />
   );
 }

@@ -1,10 +1,10 @@
-import { supabase } from './supabase.js';
-import { recordOutcome } from '../agent/memory.js';
-import { sendEmail } from './gmail.js';
-import { getInvoices } from './invoices.js';
-import type { Decision } from './types.js';
+import { supabase } from "./supabase.js";
+import { recordOutcome } from "../agent/memory.js";
+import { sendEmail } from "./gmail.js";
+import { getInvoices } from "./invoices.js";
+import type { Decision } from "./types.js";
 
-export type HumanActionType = 'approve' | 'edit' | 'redirect' | 'override';
+export type HumanActionType = "approve" | "edit" | "redirect" | "override";
 
 export interface HumanAction {
   actionType: HumanActionType;
@@ -13,9 +13,12 @@ export interface HumanAction {
   humanNote?: string;
 }
 
-export async function executeHumanAction(decision: Decision, humanAction: HumanAction): Promise<void> {
+export async function executeHumanAction(
+  decision: Decision,
+  humanAction: HumanAction,
+): Promise<void> {
   // 1. Record the human's action for the audit trail
-  const { error } = await supabase.from('human_actions').insert({
+  const { error } = await supabase.from("human_actions").insert({
     decision_id: decision.id,
     action_type: humanAction.actionType,
     edited_action: humanAction.editedAction ?? null,
@@ -29,7 +32,7 @@ export async function executeHumanAction(decision: Decision, humanAction: HumanA
     ...decision,
     action: humanAction.editedAction ?? decision.action,
     reasoning: humanAction.editedReasoning ?? decision.reasoning,
-    status: 'auto_executed', // human has now resolved it
+    status: "auto_executed", // human has now resolved it
   };
 
   // 3. Write back to outcome memory so future decisions reflect this

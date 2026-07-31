@@ -19,7 +19,16 @@ export interface RecoveryResult {
 }
 
 export async function withRecovery(options: RecoveryOptions): Promise<RecoveryResult> {
-  const { decisionId, stepIndex, toolName, input, primaryCall, fallbackCall, maxRetries = 2, retryDelayMs = 1000 } = options;
+  const {
+    decisionId,
+    stepIndex,
+    toolName,
+    input,
+    primaryCall,
+    fallbackCall,
+    maxRetries = 2,
+    retryDelayMs = 1000,
+  } = options;
 
   let lastError: unknown;
   let currentStepIndex = stepIndex;

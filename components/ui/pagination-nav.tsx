@@ -35,10 +35,7 @@ export function Pagination({
           type="button"
           onClick={() => onPageChange(p)}
           aria-current={p === page ? "page" : undefined}
-          className={cn(
-            btn,
-            p === page && "border-primary-100 bg-primary-50 text-primary-600",
-          )}
+          className={cn(btn, p === page && "border-primary-100 bg-primary-50 text-primary-600")}
         >
           {p}
         </button>

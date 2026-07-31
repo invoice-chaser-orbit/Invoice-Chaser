@@ -5,13 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function CountUp({
-  value,
-  format,
-}: {
-  value: number;
-  format?: (n: number) => string;
-}) {
+function CountUp({ value, format }: { value: number; format?: (n: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const mv = useMotionValue(0);
@@ -55,13 +49,7 @@ export function KpiCard({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "glass rounded-lg p-6 shadow-sm",
-        kpiTones[tone].glass,
-        className,
-      )}
-    >
+    <div className={cn("glass rounded-lg p-6 shadow-sm", kpiTones[tone].glass, className)}>
       <div className="flex items-center gap-3">
         {icon && (
           <span
@@ -93,9 +81,7 @@ export function KpiCard({
           {trend.text}
         </p>
       )}
-      {caption && !trend && (
-        <p className="mt-2 text-caption text-neutral-500">{caption}</p>
-      )}
+      {caption && !trend && <p className="mt-2 text-caption text-neutral-500">{caption}</p>}
     </div>
   );
 }

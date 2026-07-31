@@ -15,13 +15,7 @@ import { cn } from "@/lib/utils";
 const TABS = ["Overview", "Audit trail", "Teach-me"] as const;
 
 function parseEscalation(reason: string) {
-  const labels = [
-    "Tried",
-    "Found",
-    "Could not resolve",
-    "Options",
-    "Recommendation",
-  ];
+  const labels = ["Tried", "Found", "Could not resolve", "Options", "Recommendation"];
   const keys = ["Tried:", "Found:", "Could not resolve:", "Options:", "Recommendation:"];
   const sections: { label: string; text: string }[] = [];
   const positions = keys
@@ -35,8 +29,7 @@ function parseEscalation(reason: string) {
 
   positions.forEach((p, idx) => {
     const start = p.at + p.k.length;
-    const end =
-      idx + 1 < positions.length ? positions[idx + 1].at : reason.length;
+    const end = idx + 1 < positions.length ? positions[idx + 1].at : reason.length;
     sections.push({
       label: labels[p.i],
       text: reason.slice(start, end).trim().replace(/[.,]$/, ""),
@@ -54,9 +47,7 @@ function OverviewTab({ decision }: { decision: Decision }) {
       </section>
       <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <p className="text-caption text-neutral-500 uppercase">Action</p>
-        <p className="mt-2 text-body font-semibold text-neutral-900">
-          {decision.action}
-        </p>
+        <p className="mt-2 text-body font-semibold text-neutral-900">{decision.action}</p>
       </section>
       <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <p className="text-caption text-neutral-500 uppercase">Reasoning</p>
@@ -69,9 +60,7 @@ function OverviewTab({ decision }: { decision: Decision }) {
           <dl className="mt-5 space-y-4">
             {parseEscalation(decision.escalationReason).map((s) => (
               <div key={s.label}>
-                <dt className="text-caption text-neutral-500 uppercase">
-                  {s.label}
-                </dt>
+                <dt className="text-caption text-neutral-500 uppercase">{s.label}</dt>
                 <dd className="mt-1 text-body text-neutral-700">{s.text}</dd>
               </div>
             ))}
@@ -81,9 +70,7 @@ function OverviewTab({ decision }: { decision: Decision }) {
 
       {decision.status !== "ask_human" && (
         <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
-          <p className="text-caption text-neutral-500 uppercase">
-            Escalation reason
-          </p>
+          <p className="text-caption text-neutral-500 uppercase">Escalation reason</p>
           <p className="mt-2 text-body text-neutral-500">
             None — this decision did not require escalation.
           </p>
@@ -114,9 +101,7 @@ function TrailTab({ decision }: { decision: Decision }) {
                 <span className="text-body font-semibold text-neutral-900">
                   {humanizeToolName(step.toolName)}
                 </span>
-                <span className="ml-2 font-mono text-[11px] text-neutral-400">
-                  {step.toolName}
-                </span>
+                <span className="ml-2 font-mono text-[11px] text-neutral-400">{step.toolName}</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -214,9 +199,7 @@ export function DecisionDetail({
           </div>
           <div className="flex items-center gap-4">
             <div>
-              <p className="text-caption text-neutral-500 uppercase">
-                Confidence
-              </p>
+              <p className="text-caption text-neutral-500 uppercase">Confidence</p>
               <ConfidenceMeter value={decision.confidence} className="mt-1" />
             </div>
             <StatusTag status={decision.status} />

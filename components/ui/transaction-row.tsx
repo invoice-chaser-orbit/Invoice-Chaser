@@ -33,21 +33,15 @@ export function TransactionRow({
     >
       <AvatarCircle name={title} size={40} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-semibold text-neutral-900">
-          {title}
-        </p>
+        <p className="truncate text-body font-semibold text-neutral-900">{title}</p>
         <p className="truncate text-caption text-neutral-500">{subtitle}</p>
       </div>
       <div className="hidden sm:block">
         <ConfidenceMeter value={confidence} />
       </div>
       <div className="text-right">
-        <p className="text-body font-semibold text-neutral-900 tabular-nums">
-          {value}
-        </p>
-        {valueCaption && (
-          <p className="text-caption text-neutral-500">{valueCaption}</p>
-        )}
+        <p className="text-body font-semibold text-neutral-900 tabular-nums">{value}</p>
+        {valueCaption && <p className="text-caption text-neutral-500">{valueCaption}</p>}
       </div>
       <StatusTag status={status} />
     </div>

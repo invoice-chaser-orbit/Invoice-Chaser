@@ -42,8 +42,7 @@
   --color-info-text: #1d4ed8;
   --color-info-border: #bfdbfe;
 
-  --font-sans:
-    "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -54,7 +53,12 @@
   --shadow-md: 0 6px 16px rgba(17, 24, 39, 0.12), 0 2px 4px rgba(17, 24, 39, 0.06);
   --shadow-lg: 0 16px 40px rgba(17, 24, 39, 0.16), 0 4px 10px rgba(17, 24, 39, 0.08);
 
-  --gradient-app: linear-gradient(160deg, var(--color-primary-50) 0%, var(--color-info-bg) 45%, var(--color-success-bg) 300%);
+  --gradient-app: linear-gradient(
+    160deg,
+    var(--color-primary-50) 0%,
+    var(--color-info-bg) 45%,
+    var(--color-success-bg) 300%
+  );
 }
 
 /* shadcn semantic aliases mapped onto the same ramp */
@@ -126,9 +130,10 @@
 
   body {
     background-image:
-      radial-gradient(rgba(17, 24, 39, 0.2) 1px, transparent 1px),
-      var(--gradient-app);
-    background-size: 20px 20px, auto;
+      radial-gradient(rgba(17, 24, 39, 0.2) 1px, transparent 1px), var(--gradient-app);
+    background-size:
+      20px 20px,
+      auto;
     background-attachment: fixed, fixed;
     color: var(--color-neutral-900);
     font-family: var(--font-sans);

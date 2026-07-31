@@ -11,11 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
-export function OverdueTrendChart({
-  data,
-}: {
-  data: { month: string; current: number }[];
-}) {
+export function OverdueTrendChart({ data }: { data: { month: string; current: number }[] }) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">

@@ -44,11 +44,15 @@ export function ApprovalsQueue({
     .filter((d) => d.status === "pending_approval" || d.status === "ask_human")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  function runAction(decisionId: string, actionType: HumanActionType, fields?: {
-    editedAction?: string;
-    editedReasoning?: string;
-    humanNote?: string;
-  }) {
+  function runAction(
+    decisionId: string,
+    actionType: HumanActionType,
+    fields?: {
+      editedAction?: string;
+      editedReasoning?: string;
+      humanNote?: string;
+    },
+  ) {
     setPendingId(decisionId);
     startTransition(async () => {
       try {
@@ -89,8 +93,7 @@ export function ApprovalsQueue({
                       {invoice?.customerName ?? d.customerId}
                     </h2>
                     <p className="mt-1 text-caption text-neutral-500">
-                      {d.invoiceId} ·{" "}
-                      {invoice ? usd(invoice.amountDue, invoice.currency) : "—"} ·{" "}
+                      {d.invoiceId} · {invoice ? usd(invoice.amountDue, invoice.currency) : "—"} ·{" "}
                       {formatDateTime(d.createdAt)}
                     </p>
                   </div>
@@ -100,12 +103,8 @@ export function ApprovalsQueue({
                   </div>
                 </div>
 
-                <p className="mt-5 text-body font-semibold text-neutral-900">
-                  {d.action}
-                </p>
-                <p className="mt-2 line-clamp-3 text-body text-neutral-500">
-                  {d.reasoning}
-                </p>
+                <p className="mt-5 text-body font-semibold text-neutral-900">{d.action}</p>
+                <p className="mt-2 line-clamp-3 text-body text-neutral-500">{d.reasoning}</p>
                 {trailsByDecisionId[d.id] && trailsByDecisionId[d.id].length > 0 && (
                   <ol className="mt-4 space-y-1.5">
                     {[...trailsByDecisionId[d.id]]

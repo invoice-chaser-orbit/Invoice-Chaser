@@ -17,7 +17,8 @@ export const metadata: Metadata = {
     "An autonomous accounts-receivable agent that senses, reasons, acts and observes across your ledger — minimising overdue receivables without damaging customer relationships.",
   openGraph: {
     title: "InvoiceChaser — Same lateness. Different decisions.",
-    description: "Autonomous AR collection for SMEs, with a human in the loop on every gated action.",
+    description:
+      "Autonomous AR collection for SMEs, with a human in the loop on every gated action.",
   },
 };
 
@@ -65,9 +66,9 @@ export default async function Landing() {
             <Typewriter text="Same lateness. Different decisions." />
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-body-lg text-neutral-500">
-            InvoiceChaser runs continuously over your receivables ledger with one
-            standing goal: minimise overdue receivables without damaging customer
-            relationships. Two customers ten days late are not the same customer.
+            InvoiceChaser runs continuously over your receivables ledger with one standing goal:
+            minimise overdue receivables without damaging customer relationships. Two customers ten
+            days late are not the same customer.
           </p>
           <div className="mt-8 flex justify-center">
             <IcButton asChild>
@@ -103,9 +104,7 @@ export default async function Landing() {
                     <span className="grid h-10 w-10 place-items-center rounded-md bg-primary-50 text-primary-500">
                       <s.icon size={20} strokeWidth={2} />
                     </span>
-                    <span className="text-caption text-neutral-500">
-                      Stage {i + 1}
-                    </span>
+                    <span className="text-caption text-neutral-500">Stage {i + 1}</span>
                   </div>
                   <h3 className="mt-4 text-h3 text-neutral-900">{s.name}</h3>
                   <p className="mt-2 text-body text-neutral-500">{s.text}</p>
@@ -121,15 +120,11 @@ export default async function Landing() {
             <table className="w-full text-left">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
-                    Category
-                  </th>
+                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">Category</th>
                   <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
                     Real-world binding
                   </th>
-                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
-                    Status
-                  </th>
+                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -141,9 +136,7 @@ export default async function Landing() {
                     <td className="px-6 py-4 text-body font-semibold text-neutral-900">
                       {t.category}
                     </td>
-                    <td className="px-6 py-4 text-body text-neutral-700">
-                      {t.binding}
-                    </td>
+                    <td className="px-6 py-4 text-body text-neutral-700">{t.binding}</td>
                     <td className="px-6 py-4">
                       <Tag tone={t.live ? "success" : "neutral"}>
                         {t.live ? "Live" : "Simulated"}
@@ -158,12 +151,10 @@ export default async function Landing() {
 
         <section className="mx-auto max-w-6xl px-6 pb-24">
           <div className="rounded-xl bg-neutral-900 px-10 py-16 text-center">
-            <h2 className="text-h2 text-white">
-              Put a reasoning agent on your aging report.
-            </h2>
+            <h2 className="text-h2 text-white">Put a reasoning agent on your aging report.</h2>
             <p className="mx-auto mt-3 max-w-xl text-body-lg text-neutral-300">
-              Autonomous where it is safe, gated where it is commercial, and fully
-              auditable either way.
+              Autonomous where it is safe, gated where it is commercial, and fully auditable either
+              way.
             </p>
             <div className="mt-8 flex justify-center">
               <IcButton asChild>

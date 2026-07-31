@@ -104,10 +104,12 @@ function toGeminiSchema(schema: ToolParamSchema): Record<string, unknown> {
 }
 
 function extractSystemText(messages: LlmMessage[]): string | undefined {
-  return messages
-    .filter((m) => m.role === "system")
-    .map((m) => m.text ?? "")
-    .join("\n\n") || undefined;
+  return (
+    messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.text ?? "")
+      .join("\n\n") || undefined
+  );
 }
 
 function toGeminiContents(messages: LlmMessage[]): Content[] {
@@ -189,7 +191,10 @@ const DECISION_SCHEMA: ToolParamSchema = {
   type: "object",
   properties: {
     action: { type: "string", description: "One sentence: what the agent did or is proposing." },
-    reasoning: { type: "string", description: "Why this action, referencing what the tools returned." },
+    reasoning: {
+      type: "string",
+      description: "Why this action, referencing what the tools returned.",
+    },
     manualProcedure: {
       type: "array",
       items: { type: "string" },
@@ -200,7 +205,8 @@ const DECISION_SCHEMA: ToolParamSchema = {
     confidence: { type: "number", description: "0 to 1: confidence this is the right call." },
     escalationReason: {
       type: "string",
-      description: "What was tried, what was found, what remains unresolved, and proposed options with a recommendation. Empty string if not escalating.",
+      description:
+        "What was tried, what was found, what remains unresolved, and proposed options with a recommendation. Empty string if not escalating.",
     },
     status: {
       type: "string",

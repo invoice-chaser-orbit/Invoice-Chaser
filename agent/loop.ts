@@ -56,7 +56,10 @@ export function buildTurnBudgetEscalation(
 } {
   return {
     whatTried: `Called ${trail.length} tool(s) while investigating ${invoiceId}.`,
-    whatFound: trail.length > 0 ? "See the trail above for what each tool returned." : "No data was retrieved.",
+    whatFound:
+      trail.length > 0
+        ? "See the trail above for what each tool returned."
+        : "No data was retrieved.",
     whatUnresolved: `No confident action was reached within ${maxTurns} reasoning turns.`,
     options: [
       "Have a human review the trail above and decide manually.",
@@ -186,7 +189,9 @@ async function runReasoningTurns(
       // model, not a completed send — it must not count as the terminal action, or a model that
       // ignores the dispute rule would still finalize as auto_executed.
       const isBlocked =
-        typeof result.output === "object" && result.output !== null && (result.output as { blocked?: boolean }).blocked === true;
+        typeof result.output === "object" &&
+        result.output !== null &&
+        (result.output as { blocked?: boolean }).blocked === true;
       if (!isBlocked) effectiveToolNames.push(result.effectiveToolName);
     }
     messages.push({ role: "tool", toolResults });
@@ -240,7 +245,8 @@ async function finalizeDecision(
     reasoning: output.reasoning,
     manualProcedure: output.manualProcedure,
     confidence: output.confidence,
-    escalationReason: status === "pending_approval" ? output.escalationReason || output.reasoning : null,
+    escalationReason:
+      status === "pending_approval" ? output.escalationReason || output.reasoning : null,
     status,
     createdAt: new Date().toISOString(),
   };
@@ -406,9 +412,13 @@ async function main(): Promise<void> {
 
   console.log(`\n${"=".repeat(70)}`);
   console.log(`Day 0 gate: ${decisions.length}/${seedInvoices.length} decisions produced.`);
-  console.log(`  Pending human approval: ${decisions.filter((d) => d.status === "pending_approval").length}`);
+  console.log(
+    `  Pending human approval: ${decisions.filter((d) => d.status === "pending_approval").length}`,
+  );
   const allUsedRealTools = decisions.every((d) => d.trail.length > 0);
-  console.log(`  Every decision used at least one real tool call: ${allUsedRealTools ? "yes" : "NO — investigate"}`);
+  console.log(
+    `  Every decision used at least one real tool call: ${allUsedRealTools ? "yes" : "NO — investigate"}`,
+  );
 }
 
 // Only run the live agent when this file is executed directly (npm run agent), not when it's

@@ -31,7 +31,7 @@ export const TOOLS: ToolDefinition[] = [
     description:
       "Accounting system lookup: purchase-order match status and delivery confirmation for an " +
       "invoice under dispute. Call this before deciding anything else when get_invoice_details " +
-      "shows disputeStatus \"open\" — never send a reminder to a disputing customer.",
+      'shows disputeStatus "open" — never send a reminder to a disputing customer.',
     parameters: {
       type: "object",
       properties: {
@@ -195,7 +195,10 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
         (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
       );
       const to = invoice?.email;
-      if (!to) throw new Error(`No email on file for customer ${args.customerId} — cannot send a real reminder email`);
+      if (!to)
+        throw new Error(
+          `No email on file for customer ${args.customerId} — cannot send a real reminder email`,
+        );
       if (to.endsWith("@example.com")) {
         throw new Error(
           `${to} is still a REPLACE_ME placeholder in data/seed.ts — set a real address before ` +

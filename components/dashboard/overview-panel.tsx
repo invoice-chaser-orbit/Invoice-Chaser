@@ -60,16 +60,12 @@ export function OverviewPanel({
     (sum, i) => sum + Math.max(0, i.amountDue - (i.amountReceived ?? 0)),
     0,
   );
-  const pendingApprovals = decisions.filter(
-    (d) => d.status === "pending_approval",
-  ).length;
+  const pendingApprovals = decisions.filter((d) => d.status === "pending_approval").length;
   const today = new Date().toDateString();
   const autoExecuted = decisions.filter(
     (d) => d.status === "auto_executed" && new Date(d.createdAt).toDateString() === today,
   ).length;
-  const openEscalations = decisions.filter(
-    (d) => d.status === "ask_human",
-  ).length;
+  const openEscalations = decisions.filter((d) => d.status === "ask_human").length;
   const dso = computeDso(invoices);
   const amountRecovered = invoices.reduce((sum, i) => sum + (i.amountReceived ?? 0), 0);
   const totalBilled = invoices.reduce((sum, i) => sum + i.amountDue, 0);

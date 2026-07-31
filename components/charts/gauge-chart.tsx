@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 import { useInView, useMotionValue, useSpring } from "motion/react";
 import { useRef } from "react";
 
-export function GaugeChart({
-  value,
-  label = "Efficiency",
-}: {
-  value: number;
-  label?: string;
-}) {
+export function GaugeChart({ value, label = "Efficiency" }: { value: number; label?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true });
   const mv = useMotionValue(0);
@@ -48,9 +42,7 @@ export function GaugeChart({
           strokeDashoffset={offset}
         />
       </svg>
-      <p className="-mt-6 text-h2 text-primary-500 tabular-nums">
-        {(pct * 100).toFixed(2)}%
-      </p>
+      <p className="-mt-6 text-h2 text-primary-500 tabular-nums">{(pct * 100).toFixed(2)}%</p>
       <p className="mt-1 text-caption text-neutral-500">{label}</p>
     </div>
   );

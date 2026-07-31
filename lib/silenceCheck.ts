@@ -1,6 +1,6 @@
-import { getDecisions } from './decisions.js';
-import { runSilenceCheck } from '../agent/loop.js';
-import type { Decision } from './types.js';
+import { getDecisions } from "./decisions.js";
+import { runSilenceCheck } from "../agent/loop.js";
+import type { Decision } from "./types.js";
 
 const SILENCE_THRESHOLD_DAYS = 7; // adjustable — worth confirming a demo-friendly value with the team
 
@@ -10,10 +10,10 @@ export async function checkForSilentInvoices(): Promise<Decision[]> {
 
   for (const decision of allDecisions) {
     // Only check decisions where the agent already sent something and is awaiting a reply
-    if (decision.status !== 'auto_executed') continue;
+    if (decision.status !== "auto_executed") continue;
 
     const daysSince = Math.floor(
-      (Date.now() - new Date(decision.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(decision.createdAt).getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (daysSince < SILENCE_THRESHOLD_DAYS) continue;

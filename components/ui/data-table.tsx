@@ -10,20 +10,12 @@ export function DataTable({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "glass glass-white overflow-hidden rounded-lg shadow-sm",
-        className,
-      )}
-    >
+    <div className={cn("glass glass-white overflow-hidden rounded-lg shadow-sm", className)}>
       <table className="w-full text-left">
         <thead className="bg-neutral-50">
           <tr>
             {headers.map((h) => (
-              <th
-                key={h}
-                className="px-6 py-3 text-caption font-medium text-neutral-500 uppercase"
-              >
+              <th key={h} className="px-6 py-3 text-caption font-medium text-neutral-500 uppercase">
                 {h}
               </th>
             ))}
@@ -60,9 +52,5 @@ export function DataCell({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <td className={cn("px-6 py-4 text-body text-neutral-700", className)}>
-      {children}
-    </td>
-  );
+  return <td className={cn("px-6 py-4 text-body text-neutral-700", className)}>{children}</td>;
 }

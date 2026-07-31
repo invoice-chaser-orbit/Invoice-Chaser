@@ -1,13 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Activity,
-  Brain,
-  CalendarClock,
-  Eye,
-  Mail,
-  Send,
-  Webhook,
-} from "lucide-react";
+import { Activity, Brain, CalendarClock, Eye, Mail, Send, Webhook } from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site/site-shell";
 import { PageTransition } from "@/components/ui/motion-primitives";
 import { StaggerGrid, StaggerItem } from "@/components/ui/kpi-card";
@@ -94,13 +86,11 @@ export default function HowItWorks() {
       <SiteNav />
       <PageTransition>
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-12">
-          <h1 className="max-w-3xl text-h1 text-neutral-900">
-            A loop, not a reminder schedule.
-          </h1>
+          <h1 className="max-w-3xl text-h1 text-neutral-900">A loop, not a reminder schedule.</h1>
           <p className="mt-5 max-w-2xl text-body-lg text-neutral-500">
-            InvoiceChaser runs sense → reason → act → observe continuously over the
-            receivables ledger, against one standing goal: minimise overdue
-            receivables without damaging customer relationships.
+            InvoiceChaser runs sense → reason → act → observe continuously over the receivables
+            ledger, against one standing goal: minimise overdue receivables without damaging
+            customer relationships.
           </p>
         </section>
 
@@ -144,15 +134,11 @@ export default function HowItWorks() {
             <table className="w-full text-left">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
-                    Category
-                  </th>
+                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">Category</th>
                   <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
                     Real-world binding
                   </th>
-                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">
-                    Status
-                  </th>
+                  <th className="px-6 py-3 text-caption text-neutral-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,9 +150,7 @@ export default function HowItWorks() {
                     <td className="px-6 py-4 text-body font-semibold text-neutral-900">
                       {t.category}
                     </td>
-                    <td className="px-6 py-4 text-body text-neutral-700">
-                      {t.binding}
-                    </td>
+                    <td className="px-6 py-4 text-body text-neutral-700">{t.binding}</td>
                     <td className="px-6 py-4">
                       <Tag tone={t.live ? "success" : "neutral"}>
                         {t.live ? "Live" : "Simulated"}
@@ -204,9 +188,7 @@ export default function HowItWorks() {
             </div>
           </div>
           <div className="mt-6 rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
-            <p className="text-caption text-neutral-500 uppercase">
-              Human powers
-            </p>
+            <p className="text-caption text-neutral-500 uppercase">Human powers</p>
             <div className="mt-4 flex flex-wrap gap-3">
               {["Approve", "Edit", "Redirect", "Override"].map((p) => (
                 <Tag key={p} tone="info">

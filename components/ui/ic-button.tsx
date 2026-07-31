@@ -8,8 +8,7 @@ const icButtonVariants = cva(
     variants: {
       variant: {
         primary: "bg-primary-500 text-white hover:bg-primary-600 active:scale-95",
-        secondary:
-          "bg-neutral-900 text-white hover:bg-black active:scale-95",
+        secondary: "bg-neutral-900 text-white hover:bg-black active:scale-95",
         outlined:
           "bg-transparent border border-neutral-300 text-neutral-900 hover:border-primary-500 hover:text-primary-500",
         ghost: "bg-transparent text-neutral-700 hover:bg-neutral-100",
@@ -25,25 +24,13 @@ const icButtonVariants = cva(
 );
 
 export interface IcButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof icButtonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof icButtonVariants> {
   asChild?: boolean;
 }
 
-export function IcButton({
-  className,
-  variant,
-  size,
-  asChild,
-  ...props
-}: IcButtonProps) {
+export function IcButton({ className, variant, size, asChild, ...props }: IcButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return (
-    <Comp
-      className={cn(icButtonVariants({ variant, size }), className)}
-      {...props}
-    />
-  );
+  return <Comp className={cn(icButtonVariants({ variant, size }), className)} {...props} />;
 }
 
 export { icButtonVariants };

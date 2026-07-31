@@ -43,9 +43,7 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-2001", daysLate: 4 },
     ],
     openDeals: [],
-    pastPromises: [
-      { madeOn: "2026-07-01", promisedPayDate: "2026-07-08", kept: false },
-    ],
+    pastPromises: [{ madeOn: "2026-07-01", promisedPayDate: "2026-07-08", kept: false }],
     notes:
       "Normally pays within a week of terms. On 2026-07-01 promised payment of INV-2077 by " +
       "2026-07-08 in an email reply; no payment or further contact since. No open deals.",
@@ -61,7 +59,11 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-2990", daysLate: 1 },
     ],
     openDeals: [
-      { name: "Annual fabric supply renewal — currently under procurement negotiation", value: 1800000, closeDate: "2026-08-03" },
+      {
+        name: "Annual fabric supply renewal — currently under procurement negotiation",
+        value: 1800000,
+        closeDate: "2026-08-03",
+      },
     ],
     pastPromises: [],
     notes:
@@ -177,9 +179,7 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-5815", daysLate: 22 },
       { invoiceId: "INV-5905", daysLate: 25 },
     ],
-    openDeals: [
-      { name: "Annual milling supply renewal", value: 1100000, closeDate: "2026-09-15" },
-    ],
+    openDeals: [{ name: "Annual milling supply renewal", value: 1100000, closeDate: "2026-09-15" }],
     pastPromises: [],
     notes: "Habitually 20-25 days late — normal for this account. Renewal open in ~7 weeks.",
   },
@@ -224,9 +224,7 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-5819", daysLate: 18 },
       { invoiceId: "INV-5906", daysLate: 15 },
     ],
-    openDeals: [
-      { name: "Export partnership expansion", value: 900000, closeDate: "2026-10-01" },
-    ],
+    openDeals: [{ name: "Export partnership expansion", value: 900000, closeDate: "2026-10-01" }],
     pastPromises: [],
     notes: "Large, long-standing account. Typically 15-20 days late; renewal-adjacent deal open.",
   },
@@ -273,9 +271,7 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-5908", daysLate: 24 },
     ],
     openDeals: [],
-    pastPromises: [
-      { madeOn: "2026-06-20", promisedPayDate: "2026-06-27", kept: true },
-    ],
+    pastPromises: [{ madeOn: "2026-06-20", promisedPayDate: "2026-06-27", kept: true }],
     notes: "Habitually late but keeps its promises when it makes them.",
   },
   {
@@ -345,9 +341,7 @@ export const customerHistories: CustomerHistory[] = [
       { invoiceId: "INV-5910", daysLate: 26 },
     ],
     openDeals: [],
-    pastPromises: [
-      { madeOn: "2026-06-16", promisedPayDate: "2026-06-23", kept: false },
-    ],
+    pastPromises: [{ madeOn: "2026-06-16", promisedPayDate: "2026-06-23", kept: false }],
     notes: "Promised payment on 2026-06-16 for a prior invoice by 2026-06-23; missed it.",
   },
 ];
@@ -356,9 +350,30 @@ export const customerHistories: CustomerHistory[] = [
 // current INV-4002 shortfall — the reconciliation scenario must stay ambiguous, not be
 // resolved by a lookup.
 export const paymentTransactions: PaymentTransaction[] = [
-  { invoiceId: "INV-3311", customerId: "CUST-004", amountDue: 50000, amountReceived: 49500, shortfallReason: "bank_fee", confirmedByCustomer: true },
-  { invoiceId: "INV-3402", customerId: "CUST-004", amountDue: 60000, amountReceived: 55000, shortfallReason: "withholding_tax", confirmedByCustomer: true },
-  { invoiceId: "INV-6016", customerId: "CUST-021", amountDue: 152000, amountReceived: 150000, shortfallReason: "bank_fee", confirmedByCustomer: true },
+  {
+    invoiceId: "INV-3311",
+    customerId: "CUST-004",
+    amountDue: 50000,
+    amountReceived: 49500,
+    shortfallReason: "bank_fee",
+    confirmedByCustomer: true,
+  },
+  {
+    invoiceId: "INV-3402",
+    customerId: "CUST-004",
+    amountDue: 60000,
+    amountReceived: 55000,
+    shortfallReason: "withholding_tax",
+    confirmedByCustomer: true,
+  },
+  {
+    invoiceId: "INV-6016",
+    customerId: "CUST-021",
+    amountDue: 152000,
+    amountReceived: 150000,
+    shortfallReason: "bank_fee",
+    confirmedByCustomer: true,
+  },
 ];
 
 export interface DisputeEvidence {

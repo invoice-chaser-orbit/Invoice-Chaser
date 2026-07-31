@@ -20,13 +20,28 @@ console.log("agent/classifier.selfcheck.ts: pure parser checks passed.");
 const LIVE_SAMPLES: { body: string; expectOneOf: ReplyClassification[] }[] = [
   { body: "I'll pay this by next Friday, sorry for the delay.", expectOneOf: ["promise"] },
   { body: "This invoice is wrong, we never received half these items.", expectOneOf: ["dispute"] },
-  { body: "We've sent 50000 of the 80000 due, the rest follows next week.", expectOneOf: ["partial-payment"] },
+  {
+    body: "We've sent 50000 of the 80000 due, the rest follows next week.",
+    expectOneOf: ["partial-payment"],
+  },
   { body: "Can you resend the itemised breakdown for this invoice?", expectOneOf: ["query"] },
-  { body: "Already paid this on the 3rd, please check your records.", expectOneOf: ["dispute", "query"] },
+  {
+    body: "Already paid this on the 3rd, please check your records.",
+    expectOneOf: ["dispute", "query"],
+  },
   { body: "Yes, will settle it. Not sure exactly when though.", expectOneOf: ["promise", "query"] },
-  { body: "We only agreed to 90% of this — the rest was never confirmed.", expectOneOf: ["dispute"] },
-  { body: "Sent a partial amount for now, will clear the balance once cash flow improves.", expectOneOf: ["partial-payment", "promise"] },
-  { body: "Who is this regarding? We don't recognise this invoice number.", expectOneOf: ["query"] },
+  {
+    body: "We only agreed to 90% of this — the rest was never confirmed.",
+    expectOneOf: ["dispute"],
+  },
+  {
+    body: "Sent a partial amount for now, will clear the balance once cash flow improves.",
+    expectOneOf: ["partial-payment", "promise"],
+  },
+  {
+    body: "Who is this regarding? We don't recognise this invoice number.",
+    expectOneOf: ["query"],
+  },
   { body: "Ok.", expectOneOf: ["query", "promise", "dispute", "partial-payment"] },
 ];
 
@@ -40,7 +55,9 @@ async function runLiveClassifierCheck(): Promise<void> {
     );
     passed += 1;
   }
-  console.log(`agent/classifier.selfcheck.ts: live classifyReply() checks passed (${passed}/${LIVE_SAMPLES.length}).`);
+  console.log(
+    `agent/classifier.selfcheck.ts: live classifyReply() checks passed (${passed}/${LIVE_SAMPLES.length}).`,
+  );
 }
 
 if (process.env.RUN_LIVE_CLASSIFIER_CHECK === "1") {

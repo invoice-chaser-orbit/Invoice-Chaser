@@ -2,7 +2,7 @@
 
 An autonomous accounts-receivable collection agent. It runs a **sense → reason → act → observe**
 loop over a receivables ledger, driven by a standing goal —
-*"minimise overdue receivables without damaging customer relationships"* — rather than fixed
+_"minimise overdue receivables without damaging customer relationships"_ — rather than fixed
 rules. The same lateness can produce different actions for different customers: the agent reads
 relationship history, payment patterns, and open deals before deciding, and it must be able to
 show that branching, not just claim it.

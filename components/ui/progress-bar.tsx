@@ -1,12 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function ProgressBar({
-  value,
-  className,
-}: {
-  value: number;
-  className?: string;
-}) {
+export function ProgressBar({ value, className }: { value: number; className?: string }) {
   const pct = Math.max(0, Math.min(100, value * 100));
   return (
     <div className={cn("h-2 w-full rounded-full bg-neutral-100", className)}>
@@ -18,19 +12,11 @@ export function ProgressBar({
   );
 }
 
-export function ConfidenceMeter({
-  value,
-  className,
-}: {
-  value: number;
-  className?: string;
-}) {
+export function ConfidenceMeter({ value, className }: { value: number; className?: string }) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <ProgressBar value={value} className="w-16" />
-      <span className="text-caption text-neutral-500 tabular-nums">
-        {Math.round(value * 100)}%
-      </span>
+      <span className="text-caption text-neutral-500 tabular-nums">{Math.round(value * 100)}%</span>
     </div>
   );
 }

@@ -24,10 +24,7 @@ export function Typewriter({
     >
       <span aria-hidden="true">
         {text.split("").map((char, i) => (
-          <motion.span
-            key={i}
-            variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
-          >
+          <motion.span key={i} variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}>
             {char === " " ? " " : char}
           </motion.span>
         ))}

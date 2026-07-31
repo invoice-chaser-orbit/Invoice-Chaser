@@ -112,11 +112,7 @@ const ladder = [
   },
 ];
 
-export default async function FeaturePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!isSlug(slug)) notFound();
   const feature = FEATURES[slug];
@@ -127,12 +123,8 @@ export default async function FeaturePage({
       <PageTransition>
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-12">
           <Tag tone="info">{feature.title}</Tag>
-          <h1 className="mt-6 max-w-3xl text-h1 text-neutral-900">
-            {feature.hero}
-          </h1>
-          <p className="mt-5 max-w-2xl text-body-lg text-neutral-500">
-            {feature.lede}
-          </p>
+          <h1 className="mt-6 max-w-3xl text-h1 text-neutral-900">{feature.hero}</h1>
+          <p className="mt-5 max-w-2xl text-body-lg text-neutral-500">{feature.lede}</p>
         </section>
 
         <section className="mx-auto max-w-6xl px-6 pb-24">
@@ -174,9 +166,7 @@ export default async function FeaturePage({
                 </div>
               </div>
               <div className="mt-6 rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
-                <p className="text-caption text-neutral-500 uppercase">
-                  Human powers
-                </p>
+                <p className="text-caption text-neutral-500 uppercase">Human powers</p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   {["Approve", "Edit", "Redirect", "Override"].map((p) => (
                     <Tag key={p} tone="info">
@@ -199,13 +189,11 @@ export default async function FeaturePage({
               <div className="rounded-lg border border-success-border bg-white p-6 shadow-sm">
                 <Tag tone="success">Right</Tag>
                 <p className="mt-5 text-body text-neutral-700">
-                  Open the aging report and find invoices past terms. Before
-                  choosing a tone, cross-check this customer&apos;s payment pattern
-                  against their own history rather than a fixed threshold — some
-                  customers are habitually 10 days late and that is normal for
-                  them. Then check the CRM for open deals, because a firm notice on
-                  a renewal worth more than the invoice costs you more than it
-                  collects.
+                  Open the aging report and find invoices past terms. Before choosing a tone,
+                  cross-check this customer&apos;s payment pattern against their own history rather
+                  than a fixed threshold — some customers are habitually 10 days late and that is
+                  normal for them. Then check the CRM for open deals, because a firm notice on a
+                  renewal worth more than the invoice costs you more than it collects.
                 </p>
               </div>
             </div>
@@ -220,9 +208,7 @@ export default async function FeaturePage({
                       <span className="grid h-10 w-10 place-items-center rounded-md bg-primary-50 text-primary-500">
                         <r.icon size={20} strokeWidth={2} />
                       </span>
-                      <span className="text-caption text-neutral-500">
-                        Rung {i + 1}
-                      </span>
+                      <span className="text-caption text-neutral-500">Rung {i + 1}</span>
                     </div>
                     <h2 className="mt-4 text-h3 text-neutral-900">{r.name}</h2>
                     <p className="mt-2 text-body text-neutral-500">{r.text}</p>
