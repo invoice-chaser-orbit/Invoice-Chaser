@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Inbox, LayoutDashboard, ListChecks, Search } from "lucide-react";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { RunAgentButton } from "@/components/dashboard/run-agent-panel";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -48,6 +49,9 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+      <div className="mt-auto flex flex-col items-center gap-3 border-t border-neutral-200/60 pt-4">
+        <RunAgentButton />
+      </div>
     </aside>
   );
 }
