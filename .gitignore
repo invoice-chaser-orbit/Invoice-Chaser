@@ -84,6 +84,9 @@ web_modules/
 
 # dotenv environment variable files
 .env
+
+# Generated architecture reports
+/graphify-out/
 .env.*
 !.env.example
 
