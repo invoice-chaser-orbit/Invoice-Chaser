@@ -1,5 +1,7 @@
 import { supabase } from "./supabase.js";
 import type { Decision, TrailStep } from "./types.js";
+import { latestDecisionsByInvoice } from "./decision-history.js";
+import { isIncompleteDecision } from "./decision-state.js";
 
 //savedecisions()
 export async function saveDecision(decision: Decision): Promise<void> {
@@ -45,10 +47,37 @@ export async function saveDecision(decision: Decision): Promise<void> {
 
 //getdecisions()
 export async function getDecisions(): Promise<Decision[]> {
-  const { data, error } = await supabase.from("decisions").select("*");
+  const [decisionResult, actionResult] = await Promise.all([
+    supabase.from("decisions").select("*"),
+    supabase
+      .from("human_actions")
+      .select("decision_id,action_type,created_at")
+      .order("created_at", { ascending: false }),
+  ]);
+  const { data, error } = decisionResult;
 
   if (error) {
     throw new Error(`Failed to fetch decisions: ${error.message}`);
+  }
+  if (actionResult.error) {
+    throw new Error(`Failed to fetch human actions: ${actionResult.error.message}`);
+  }
+  const humanActions = new Map<string, { type: string; createdAt: string }>();
+  for (const action of actionResult.data ?? []) {
+    const existing = humanActions.get(action.decision_id);
+    if (!existing) {
+      humanActions.set(action.decision_id, {
+        type: action.action_type,
+        createdAt: action.created_at,
+      });
+    } else if (
+      action.action_type === "override" ||
+      (action.action_type === "edit" && existing.type !== "override")
+    ) {
+      // Preserve a human change made while resolving Needs input, even if the
+      // final email approval was a simple Approve click.
+      humanActions.set(action.decision_id, { ...existing, type: action.action_type });
+    }
   }
 
   return data.map((row) => ({
@@ -62,38 +91,30 @@ export async function getDecisions(): Promise<Decision[]> {
     manualProcedure: row.manual_procedure,
     confidence: row.confidence,
     escalationReason: row.escalation_reason,
-    status: row.status,
+    status:
+      row.status === "auto_executed" && humanActions.has(row.id)
+        ? humanActions.get(row.id)?.type === "override"
+          ? "human_overridden"
+          : humanActions.get(row.id)?.type === "edit"
+            ? "human_edited"
+            : "human_approved"
+        : row.status,
     createdAt: row.created_at,
+    completedAt:
+      row.status === "auto_executed"
+        ? (humanActions.get(row.id)?.createdAt ?? row.created_at)
+        : undefined,
   }));
 }
 
-//getpendingdecisions()
-// "Needs a human" spans two statuses: ordinary gated approvals and true ask_human escalations —
-// both sit in the same human queue (approve/edit/redirect/override apply to either).
+// Only the current decision for an invoice can require approval. Historical
+// pending rows remain in the audit trail but must not reappear as live work.
 export async function getPendingDecisions(): Promise<Decision[]> {
-  const { data, error } = await supabase
-    .from("decisions")
-    .select("*")
-    .in("status", ["pending_approval", "ask_human"]);
-
-  if (error) {
-    throw new Error(`Failed to fetch pending decisions: ${error.message}`);
-  }
-
-  return data.map((row) => ({
-    id: row.id,
-    invoiceId: row.invoice_id,
-    customerId: row.customer_id,
-    goal: row.goal,
-    trail: [],
-    action: row.action,
-    reasoning: row.reasoning,
-    manualProcedure: row.manual_procedure,
-    confidence: row.confidence,
-    escalationReason: row.escalation_reason,
-    status: row.status,
-    createdAt: row.created_at,
-  }));
+  return latestDecisionsByInvoice(await getDecisions()).filter(
+    (decision) =>
+      !isIncompleteDecision(decision) &&
+      (decision.status === "pending_approval" || decision.status === "ask_human"),
+  );
 }
 
 //getTrail(decisionId)

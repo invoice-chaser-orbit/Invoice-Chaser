@@ -159,6 +159,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+# Local database reset backups (may contain customer data)
+.demo-backups/
+
 #OAuth credentials
 credentials.json
 token.json

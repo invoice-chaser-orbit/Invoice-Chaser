@@ -1,14 +1,15 @@
 import { getDecisions } from "./decisions.js";
+import { latestDecisionsByInvoice } from "./decision-history.js";
 import { runSilenceCheck } from "../agent/loop.js";
 import type { Decision } from "./types.js";
 
 const SILENCE_THRESHOLD_DAYS = 7; // adjustable — worth confirming a demo-friendly value with the team
 
 export async function checkForSilentInvoices(): Promise<Decision[]> {
-  const allDecisions = await getDecisions();
+  const currentDecisions = latestDecisionsByInvoice(await getDecisions());
   const results: Decision[] = [];
 
-  for (const decision of allDecisions) {
+  for (const decision of currentDecisions) {
     // Only check decisions where the agent already sent something and is awaiting a reply
     if (decision.status !== "auto_executed") continue;
 

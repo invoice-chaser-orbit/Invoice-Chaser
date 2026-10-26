@@ -4,14 +4,25 @@ export function DataTable({
   headers,
   children,
   className,
+  columnWidths,
+  tableClassName,
 }: {
   headers: string[];
   children: React.ReactNode;
   className?: string;
+  columnWidths?: string[];
+  tableClassName?: string;
 }) {
   return (
-    <div className={cn("glass glass-white overflow-hidden rounded-lg shadow-sm", className)}>
-      <table className="w-full text-left">
+    <div className={cn("glass glass-white overflow-x-auto rounded-lg shadow-sm", className)}>
+      <table className={cn("w-full text-left", tableClassName)}>
+        {columnWidths && (
+          <colgroup>
+            {columnWidths.map((width, index) => (
+              <col key={index} style={{ width }} />
+            ))}
+          </colgroup>
+        )}
         <thead className="bg-neutral-50">
           <tr>
             {headers.map((h) => (

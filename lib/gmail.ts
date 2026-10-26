@@ -34,13 +34,26 @@ export async function sendEmail(
   subject: string,
   body: string,
 ): Promise<{ messageId: string }> {
+  // Gmail's raw field is base64url-encoded, but the message inside it still needs
+  // MIME encoding for non-ASCII headers such as an em dash in the subject.
+  const cleanSubject = subject.replace(/[\r\n]+/g, " ");
+  const mimeSubject = /[^\x20-\x7E]/.test(cleanSubject)
+    ? `=?UTF-8?B?${Buffer.from(cleanSubject, "utf8").toString("base64")}?=`
+    : cleanSubject;
+  const encodedBody =
+    Buffer.from(body, "utf8")
+      .toString("base64")
+      .match(/.{1,76}/g)
+      ?.join("\r\n") ?? "";
   const message = [
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    "Content-Type: text/plain; charset=utf-8",
+    `To: ${to.replace(/[\r\n]+/g, " ")}`,
+    `Subject: ${mimeSubject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
     "",
-    body,
-  ].join("\n");
+    encodedBody,
+  ].join("\r\n");
 
   const encodedMessage = Buffer.from(message)
     .toString("base64")

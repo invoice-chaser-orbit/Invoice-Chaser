@@ -6,6 +6,7 @@ import type { ToolDefinition } from "../lib/llm.js";
 import { seedInvoices } from "../data/seed.js";
 import { checkForcedFailure } from "./debugToggle.js";
 import { sendEmail } from "../lib/gmail.js";
+import { formatCustomerMessage } from "../lib/customer-message.js";
 import { getInvoiceDetails, getDisputeEvidence } from "../lib/adapters/accounting.js";
 import { getCustomerHistory } from "../lib/adapters/crm.js";
 import { getPaymentTransactions } from "../lib/adapters/payments.js";
@@ -76,6 +77,21 @@ export const TOOLS: ToolDefinition[] = [
         message: { type: "string", description: "The email body." },
       },
       required: ["customerId", "tone", "message"],
+    },
+  },
+  {
+    name: "request_reminder_approval",
+    description:
+      "Queue a proposed first-touch reminder for human approval without sending it. Use this " +
+      "when the invoice's contactApprovalRequired policy is true and a routine reminder is " +
+      "appropriate. Use ask_human instead for unresolved facts, disputes, or escalations.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string" },
+        message: { type: "string", description: "Proposed customer message for review." },
+      },
+      required: ["customerId", "message"],
     },
   },
   {
@@ -194,6 +210,14 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
       const invoice = seedInvoices.find(
         (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
       );
+      if (invoice?.contactApprovalRequired) {
+        return {
+          approvalRequired: true,
+          invoiceId: invoice.id,
+          proposedMessage: formatCustomerMessage(String(args.message ?? "")),
+          note: "Customer contact is queued for human approval; no email was sent.",
+        };
+      }
       const to = invoice?.email;
       if (!to)
         throw new Error(
@@ -208,7 +232,7 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
       const sent = await sendEmail(
         to,
         `Payment reminder — ${invoice.id}`,
-        String(args.message ?? ""),
+        formatCustomerMessage(String(args.message ?? "")),
       );
       return {
         messageId: sent.messageId,
@@ -221,12 +245,37 @@ export async function dispatchTool(name: string, args: Record<string, unknown>):
     case "ask_human": {
       return { received: true, note: "Escalation logged for human review." };
     }
+    case "request_reminder_approval": {
+      const invoice = seedInvoices.find(
+        (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
+      );
+      if (!invoice?.contactApprovalRequired) {
+        throw new Error("This account does not require approval for a routine first reminder.");
+      }
+      return {
+        approvalRequired: true,
+        invoiceId: invoice.id,
+        proposedMessage: formatCustomerMessage(String(args.message ?? "")),
+        note: "First-touch reminder queued for approval; no customer message was sent.",
+      };
+    }
     case "get_payment_transactions": {
       return getPaymentTransactions(String(args.customerId ?? ""));
     }
     case "send_sms_reminder": {
       const blocked = blockIfDisputed(args.customerId);
       if (blocked) return blocked;
+      const invoice = seedInvoices.find(
+        (inv) => inv.customerId.toLowerCase() === String(args.customerId ?? "").toLowerCase(),
+      );
+      if (invoice?.contactApprovalRequired) {
+        return {
+          approvalRequired: true,
+          invoiceId: invoice.id,
+          proposedMessage: String(args.message ?? ""),
+          note: "Customer contact is queued for human approval; no SMS was sent.",
+        };
+      }
       return sendSmsReminder(args.customerId, args.tone, args.message);
     }
     case "schedule_followup": {

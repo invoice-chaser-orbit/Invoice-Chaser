@@ -1,6 +1,6 @@
 import type { Invoice } from "../lib/types.js";
 
-// Five invoice personalities. Each proves one specific agent behaviour — see CLAUDE.md
+// Five original invoice personalities plus demo ledger cases. See CLAUDE.md
 // "SEEDED SCENARIOS" section. Do not edit these into blandness.
 
 export const seedInvoices: Invoice[] = [
@@ -319,5 +319,73 @@ export const seedInvoices: Invoice[] = [
     daysOverdue: 24,
     description: "Component supply, June production run",
     email: "REPLACE_ME.cust025@example.com",
+  },
+  {
+    // First-touch contact requires a person to approve the proposed reminder.
+    id: "INV-6021",
+    customerId: "CUST-026",
+    customerName: "Kelaniya Office Supplies",
+    amountDue: 74000,
+    currency: "LKR",
+    issueDate: "2026-10-01",
+    dueDate: "2026-10-14",
+    daysOverdue: 10,
+    description: "Office equipment delivery, October",
+    email: "REPLACE_ME.cust026@example.com",
+    contactApprovalRequired: true,
+  },
+  {
+    // Used with DEMO_INTERRUPT_INVOICE_ID to show a real interrupted run.
+    id: "INV-6022",
+    customerId: "CUST-027",
+    customerName: "Kegalle Packaging Works",
+    amountDue: 56000,
+    currency: "LKR",
+    issueDate: "2026-10-02",
+    dueDate: "2026-10-12",
+    daysOverdue: 12,
+    description: "Packaging material supply, October",
+    email: "REPLACE_ME.cust027@example.com",
+  },
+  {
+    // Approval-ready first reminder: reliable customer, contact requires review.
+    id: "INV-6023",
+    customerId: "CUST-028",
+    customerName: "Moratuwa Print House",
+    amountDue: 68000,
+    currency: "LKR",
+    issueDate: "2026-10-01",
+    dueDate: "2026-10-11",
+    daysOverdue: 13,
+    description: "Commercial printing supplies, October",
+    email: "REPLACE_ME.cust028@example.com",
+    contactApprovalRequired: true,
+  },
+  {
+    // A separate approval case for trying Edit or Override without consuming INV-6023.
+    id: "INV-6024",
+    customerId: "CUST-029",
+    customerName: "Panadura Food Packaging",
+    amountDue: 92000,
+    currency: "LKR",
+    issueDate: "2026-09-28",
+    dueDate: "2026-10-10",
+    daysOverdue: 14,
+    description: "Packaging materials, October order",
+    email: "REPLACE_ME.cust029@example.com",
+    contactApprovalRequired: true,
+  },
+  {
+    // Used with the opt-in demo interruption switch; normal scans can recover it.
+    id: "INV-6025",
+    customerId: "CUST-030",
+    customerName: "Kalutara Safety Equipment",
+    amountDue: 49000,
+    currency: "LKR",
+    issueDate: "2026-09-29",
+    dueDate: "2026-10-08",
+    daysOverdue: 16,
+    description: "Workplace safety supplies, October",
+    email: "REPLACE_ME.cust030@example.com",
   },
 ];

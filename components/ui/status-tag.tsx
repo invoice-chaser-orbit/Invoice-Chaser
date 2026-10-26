@@ -3,11 +3,14 @@ import { cn } from "@/lib/utils";
 
 const STATUS_META: Record<
   DecisionStatus,
-  { label: string; tone: "success" | "warning" | "danger" }
+  { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral" }
 > = {
   auto_executed: { label: "Auto-executed", tone: "success" },
   pending_approval: { label: "Pending approval", tone: "warning" },
   ask_human: { label: "Needs input", tone: "danger" },
+  human_approved: { label: "Human-approved", tone: "info" },
+  human_edited: { label: "Human-edited", tone: "info" },
+  human_overridden: { label: "Human-overridden", tone: "neutral" },
 };
 
 const toneClasses = {

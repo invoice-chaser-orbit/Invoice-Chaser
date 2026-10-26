@@ -37,9 +37,17 @@ export function extractEmailAddress(from: string): string {
   return (match ? match[1] : from).trim().toLowerCase();
 }
 
-export function findInvoiceByEmail(from: string): Invoice | undefined {
+export function findInvoiceByEmail(from: string, subject = ""): Invoice | undefined {
   const address = extractEmailAddress(from);
-  return seedInvoices.find((inv) => inv.email.toLowerCase() === address);
+  const matches = seedInvoices.filter((inv) => inv.email.toLowerCase() === address);
+  if (matches.length === 1) return matches[0];
+  const subjectInvoiceIds = new Set(
+    (subject.match(/\bINV-\d+\b/gi) ?? []).map((id) => id.toUpperCase()),
+  );
+  const matchingSubject = matches.filter((invoice) =>
+    subjectInvoiceIds.has(invoice.id.toUpperCase()),
+  );
+  return matchingSubject.length === 1 ? matchingSubject[0] : undefined;
 }
 
 const FALLBACK_CLASSIFICATION: ReplyClassification = "query";
@@ -63,9 +71,9 @@ export async function pollAndProcessReplies(): Promise<Decision[]> {
 
   const decisions: Decision[] = [];
   for (const reply of replies) {
-    const invoice = findInvoiceByEmail(reply.from);
+    const invoice = findInvoiceByEmail(reply.from, reply.subject);
     if (!invoice) {
-      console.log(`  Skipping reply from "${reply.from}" — no matching seeded invoice.`);
+      console.log(`  Skipping reply from "${reply.from}" — no unambiguous seeded invoice match.`);
       continue;
     }
 

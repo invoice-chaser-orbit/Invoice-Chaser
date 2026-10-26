@@ -1,5 +1,17 @@
 import type { Metadata } from "next";
-import { Activity, Brain, CalendarClock, Eye, Mail, Send, Webhook } from "lucide-react";
+import {
+  Activity,
+  Brain,
+  CalendarClock,
+  Check,
+  CornerUpRight,
+  Eye,
+  Mail,
+  Pencil,
+  Send,
+  ShieldCheck,
+  Webhook,
+} from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site/site-shell";
 import { PageTransition } from "@/components/ui/motion-primitives";
 import { StaggerGrid, StaggerItem } from "@/components/ui/kpi-card";
@@ -80,6 +92,13 @@ const autonomous = [
   "Scheduling its own follow-ups",
 ];
 
+const humanPowers = [
+  { name: "Approve", icon: Check },
+  { name: "Edit", icon: Pencil },
+  { name: "Redirect", icon: CornerUpRight },
+  { name: "Override", icon: ShieldCheck },
+];
+
 export default function HowItWorks() {
   return (
     <div className="min-h-screen">
@@ -87,7 +106,7 @@ export default function HowItWorks() {
       <PageTransition>
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-12">
           <h1 className="max-w-3xl text-h1 text-neutral-900">A loop, not a reminder schedule.</h1>
-          <p className="mt-5 max-w-2xl text-body-lg text-neutral-500">
+          <p className="mt-5 max-w-4xl text-body-lg text-neutral-500">
             InvoiceChaser runs sense → reason → act → observe continuously over the receivables
             ledger, against one standing goal: minimise overdue receivables without damaging
             customer relationships.
@@ -187,13 +206,19 @@ export default function HowItWorks() {
               </ul>
             </div>
           </div>
-          <div className="mt-6 rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+          <div className="mt-8">
             <p className="text-caption text-neutral-500 uppercase">Human powers</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {["Approve", "Edit", "Redirect", "Override"].map((p) => (
-                <Tag key={p} tone="info">
-                  {p}
-                </Tag>
+            <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {humanPowers.map((power) => (
+                <div
+                  key={power.name}
+                  className="h-full rounded-lg border border-neutral-100 bg-white p-6 shadow-sm"
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-md bg-primary-50 text-primary-500">
+                    <power.icon size={20} strokeWidth={2} />
+                  </span>
+                  <h3 className="mt-4 text-h3 text-neutral-900">{power.name}</h3>
+                </div>
               ))}
             </div>
           </div>

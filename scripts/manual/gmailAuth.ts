@@ -1,6 +1,5 @@
 import { google } from "googleapis";
 import express from "express";
-import open from "open";
 import fs from "fs";
 
 const credentials = JSON.parse(fs.readFileSync("credentials.json", "utf-8"));
@@ -24,8 +23,10 @@ async function getToken() {
 
   return new Promise<void>((resolve, reject) => {
     const server = app.listen(3000, () => {
-      open(authUrl);
+      console.log("Open this Google authorization URL in your browser:");
+      console.log(authUrl);
     });
+    server.on("error", reject);
 
     app.get("/oauth2callback", async (req, res) => {
       const code = req.query.code as string;
@@ -44,4 +45,9 @@ async function getToken() {
   });
 }
 
-getToken().then(() => console.log("Token saved to token.json"));
+getToken()
+  .then(() => console.log("Token saved to token.json"))
+  .catch((error) => {
+    console.error("Gmail authorization failed:", error);
+    process.exitCode = 1;
+  });

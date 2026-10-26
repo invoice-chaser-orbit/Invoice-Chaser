@@ -13,10 +13,20 @@ export async function POST() {
     async start(controller) {
       const line = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       try {
-        const decisions = await runDailyScan((decision: Decision, invoice: Invoice) => {
-          line({ decision, invoice });
-        });
-        line({ done: true, total: decisions.length });
+        let skipped = 0;
+        let failed = 0;
+        const decisions = await runDailyScan(
+          (decision: Decision, invoice: Invoice) => line({ decision, invoice }),
+          (invoice: Invoice) => {
+            skipped++;
+            line({ skipped: true, invoice });
+          },
+          (invoice: Invoice, error: Error) => {
+            failed++;
+            line({ failed: true, invoice, message: error.message });
+          },
+        );
+        line({ done: true, total: decisions.length, skipped, failed });
       } catch (err) {
         line({ error: err instanceof Error ? err.message : "Agent run failed" });
       } finally {

@@ -12,6 +12,7 @@ import type { TrailStep } from "../lib/types.js";
 // an ordinary gated reminder, so the dashboard can tell true escalations apart.
 assert.strictEqual(deriveStatus("ask_human", 0.95), "ask_human");
 assert.strictEqual(deriveStatus("ask_human", 0.1), "ask_human");
+assert.strictEqual(deriveStatus("request_reminder_approval", 0.95), "pending_approval");
 
 // deriveStatus: send_reminder_email below threshold still requires approval.
 assert.strictEqual(deriveStatus("send_reminder_email", 0.59), "pending_approval");
@@ -91,9 +92,11 @@ assert.strictEqual(
 );
 assert.strictEqual(extractEmailAddress("plain@example.com"), "plain@example.com");
 
-// findInvoiceByEmail: matches case-insensitively against seeded invoice emails; no match for an
-// address that isn't on file.
-const matchedInvoice = findInvoiceByEmail(`<${seedInvoices[0].email.toUpperCase()}>`);
+// A seeded customer address resolves to its invoice.
+const matchedInvoice = findInvoiceByEmail(
+  `<${seedInvoices[0].email.toUpperCase()}>`,
+  `Re: ${seedInvoices[0].id}`,
+);
 assert.strictEqual(matchedInvoice?.id, seedInvoices[0].id);
 assert.strictEqual(findInvoiceByEmail("nobody@nowhere.com"), undefined);
 

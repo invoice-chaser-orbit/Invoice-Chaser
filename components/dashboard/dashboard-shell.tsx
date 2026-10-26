@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, LayoutDashboard, ListChecks, Search } from "lucide-react";
+import { CheckCircle2, Inbox, LayoutDashboard, ListChecks } from "lucide-react";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { DashboardSearch } from "@/components/dashboard/dashboard-search";
 import { RunAgentButton } from "@/components/dashboard/run-agent-panel";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ const navItems = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/decisions", label: "Decisions", icon: ListChecks },
   { href: "/approvals", label: "Approvals", icon: Inbox },
+  { href: "/executed", label: "Executed", icon: CheckCircle2 },
 ];
 
 export function DashboardSidebar() {
@@ -57,27 +59,16 @@ export function DashboardSidebar() {
 }
 
 export function DashboardTopbar({
-  title,
   notificationCount = 0,
+  onSearchChange,
 }: {
   title: string;
   notificationCount?: number;
+  onSearchChange?: (query: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="relative w-full max-w-sm">
-        <Search
-          size={16}
-          strokeWidth={2}
-          className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-neutral-500"
-        />
-        <input
-          type="search"
-          placeholder="Type to search..."
-          aria-label={`Search ${title}`}
-          className="w-full rounded-md border border-neutral-300 bg-white py-2.5 pr-4 pl-10 text-body text-neutral-900 transition-shadow placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 focus:outline-none"
-        />
-      </div>
+      <DashboardSearch onLocalSearchChange={onSearchChange} />
       <div className="flex items-center gap-3">
         <NotificationBell count={notificationCount} />
         {/* <div className="flex items-center gap-3">

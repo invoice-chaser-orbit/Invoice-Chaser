@@ -4,19 +4,23 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-shell";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
-import { StatusTag } from "@/components/ui/status-tag";
+import { StatusTag, Tag } from "@/components/ui/status-tag";
 import { ConfidenceMeter } from "@/components/ui/progress-bar";
 import { Pagination } from "@/components/ui/pagination-nav";
 import { PageTransition } from "@/components/ui/motion-primitives";
-import type { Decision, DecisionStatus, Invoice } from "@/lib/types";
+import type { Decision, Invoice } from "@/lib/types";
 import { formatDateTime, usd } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { isIncompleteDecision } from "@/lib/decision-state";
+import { displayDecisionAction } from "@/lib/decision-copy";
+import { latestDecisionsByInvoice } from "@/lib/decision-history";
 
-const filters: { key: DecisionStatus | "all"; label: string }[] = [
+type DecisionFilter = "all" | "pending_approval" | "ask_human" | "incomplete";
+const filters: { key: DecisionFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "auto_executed", label: "Auto-executed" },
   { key: "pending_approval", label: "Pending approval" },
   { key: "ask_human", label: "Needs input" },
+  { key: "incomplete", label: "Incomplete runs" },
 ];
 
 const PAGE_SIZE = 5;
@@ -28,21 +32,28 @@ export function DecisionsList({
   decisions: Decision[];
   invoices: Invoice[];
 }) {
-  const [filter, setFilter] = useState<DecisionStatus | "all">("all");
+  const [filter, setFilter] = useState<DecisionFilter>("all");
   const [page, setPage] = useState(1);
   const router = useRouter();
   const getInvoice = (invoiceId: string) => invoices.find((i) => i.id === invoiceId);
 
   const rows = useMemo(() => {
-    return decisions
-      .filter((d) => filter === "all" || d.status === filter)
+    return latestDecisionsByInvoice(decisions)
+      .filter(
+        (d) =>
+          filter === "all" ||
+          (filter === "incomplete"
+            ? isIncompleteDecision(d)
+            : !isIncompleteDecision(d) && d.status === filter),
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [decisions, filter]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const notificationCount = decisions.filter(
-    (d) => d.status === "pending_approval" || d.status === "ask_human",
+  const notificationCount = latestDecisionsByInvoice(decisions).filter(
+    (d) =>
+      !isIncompleteDecision(d) && (d.status === "pending_approval" || d.status === "ask_human"),
   ).length;
 
   return (
@@ -52,7 +63,7 @@ export function DecisionsList({
       <div>
         <h1 className="text-h2 text-neutral-900">Decisions</h1>
         <p className="mt-1 text-body text-neutral-500">
-          Sorted by most recent. Every row carries its confidence and status.
+          One row per invoice, showing its most recent agent review.
         </p>
       </div>
 
@@ -77,13 +88,18 @@ export function DecisionsList({
         ))}
       </div>
 
-      <DataTable headers={["Customer", "Action", "Amount", "Confidence", "Created", "Status"]}>
+      <DataTable
+        headers={["Customer", "Action", "Amount", "Confidence", "Created", "Status"]}
+        columnWidths={["18%", "20%", "12%", "13%", "20%", "17%"]}
+        className="min-h-[608px]"
+        tableClassName="min-w-[1200px] table-fixed"
+      >
         {current.map((d) => {
           const invoice = getInvoice(d.invoiceId);
           return (
             <DataRow
               key={d.id}
-              className="cursor-pointer"
+              className="h-28 cursor-pointer"
               onClick={() => router.push(`/decisions/${d.id}`)}
             >
               <DataCell className="font-semibold text-neutral-900">
@@ -93,7 +109,11 @@ export function DecisionsList({
                 </span>
               </DataCell>
               <DataCell className="max-w-sm">
-                <span className="line-clamp-2">{d.action}</span>
+                <span className="line-clamp-2">
+                  {d.action
+                    ? displayDecisionAction(d.action)
+                    : "Run ended before an action was produced"}
+                </span>
                 {d.escalationReason && (
                   <span className="mt-1 block text-caption text-danger-text">
                     Escalated — see detail
@@ -104,11 +124,15 @@ export function DecisionsList({
                 {invoice ? usd(invoice.amountDue, invoice.currency) : "—"}
               </DataCell>
               <DataCell>
-                <ConfidenceMeter value={d.confidence} />
+                <ConfidenceMeter value={isIncompleteDecision(d) ? 0 : d.confidence} />
               </DataCell>
               <DataCell className="whitespace-nowrap">{formatDateTime(d.createdAt)}</DataCell>
               <DataCell>
-                <StatusTag status={d.status} />
+                {isIncompleteDecision(d) ? (
+                  <Tag tone="neutral">Incomplete run</Tag>
+                ) : (
+                  <StatusTag status={d.status} />
+                )}
               </DataCell>
             </DataRow>
           );

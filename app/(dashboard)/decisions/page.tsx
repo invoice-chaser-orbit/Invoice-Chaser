@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DecisionsList } from "@/components/dashboard/decisions-list";
 import { getDecisions } from "@/lib/decisions";
-import { getInvoices } from "@/lib/invoices";
+import { getInvoiceCatalog } from "@/lib/invoices";
 
 export const metadata: Metadata = {
   title: "Decisions — InvoiceChaser",
@@ -14,6 +14,6 @@ export const metadata: Metadata = {
 };
 
 export default async function DecisionsPage() {
-  const [decisions, invoices] = await Promise.all([getDecisions(), getInvoices()]);
+  const [decisions, invoices] = await Promise.all([getDecisions(), getInvoiceCatalog()]);
   return <DecisionsList decisions={decisions} invoices={invoices} />;
 }

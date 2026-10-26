@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowDownRight, RefreshCw, Shuffle, Siren } from "lucide-react";
+import {
+  ArrowDownRight,
+  Check,
+  CornerUpRight,
+  Pencil,
+  RefreshCw,
+  ShieldCheck,
+  Shuffle,
+  Siren,
+} from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site/site-shell";
 import { PageTransition } from "@/components/ui/motion-primitives";
 import { StaggerGrid, StaggerItem } from "@/components/ui/kpi-card";
@@ -89,6 +98,13 @@ const autonomous = [
   "Scheduling its own follow-ups",
 ];
 
+const humanPowers = [
+  { name: "Approve", icon: Check },
+  { name: "Edit", icon: Pencil },
+  { name: "Redirect", icon: CornerUpRight },
+  { name: "Override", icon: ShieldCheck },
+];
+
 const ladder = [
   {
     icon: RefreshCw,
@@ -165,13 +181,19 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
                   </ul>
                 </div>
               </div>
-              <div className="mt-6 rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+              <div className="mt-8">
                 <p className="text-caption text-neutral-500 uppercase">Human powers</p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {["Approve", "Edit", "Redirect", "Override"].map((p) => (
-                    <Tag key={p} tone="info">
-                      {p}
-                    </Tag>
+                <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {humanPowers.map((power) => (
+                    <div
+                      key={power.name}
+                      className="h-full rounded-lg border border-neutral-100 bg-white p-6 shadow-sm"
+                    >
+                      <span className="grid h-10 w-10 place-items-center rounded-md bg-primary-50 text-primary-500">
+                        <power.icon size={20} strokeWidth={2} />
+                      </span>
+                      <h3 className="mt-4 text-h3 text-neutral-900">{power.name}</h3>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -182,18 +204,18 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-lg border border-danger-border bg-white p-6 shadow-sm">
                 <Tag tone="danger">Wrong</Tag>
-                <p className="mt-5 text-body text-neutral-700">
-                  Called lookup_crm. Called check_payment_history. Sent email.
+                <p className="mt-5 text-body text-neutral-700 text-balance">
+                  Called lookup_crm. Called check_payment_history. Sent email. This logs the tools
+                  but never explains why the customer received that action or how to repeat the
+                  judgment.
                 </p>
               </div>
               <div className="rounded-lg border border-success-border bg-white p-6 shadow-sm">
                 <Tag tone="success">Right</Tag>
-                <p className="mt-5 text-body text-neutral-700">
-                  Open the aging report and find invoices past terms. Before choosing a tone,
-                  cross-check this customer&apos;s payment pattern against their own history rather
-                  than a fixed threshold — some customers are habitually 10 days late and that is
-                  normal for them. Then check the CRM for open deals, because a firm notice on a
-                  renewal worth more than the invoice costs you more than it collects.
+                <p className="mt-5 text-body text-neutral-700 text-balance">
+                  Compare the overdue invoice with this customer&apos;s payment pattern and open
+                  deals. Explain why a softer reminder protects the relationship before choosing the
+                  action.
                 </p>
               </div>
             </div>

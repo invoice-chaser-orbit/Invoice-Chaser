@@ -29,14 +29,14 @@ export function GaugeChart({ value, label = "Efficiency" }: { value: number; lab
           d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
           fill="none"
           stroke="#F3F4F6"
-          strokeWidth={18}
+          strokeWidth={36}
           strokeLinecap="round"
         />
         <path
           d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
           fill="none"
           stroke="#8B5CF6"
-          strokeWidth={18}
+          strokeWidth={36}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}

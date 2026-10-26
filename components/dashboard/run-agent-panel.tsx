@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { Decision, Invoice } from "@/lib/types";
 
 type ScanItem = { decision: Decision; invoice: Invoice };
+type FailedItem = { invoice: Invoice; message: string };
 
 const TOTAL_INVOICES = seedInvoices.length;
 
@@ -29,6 +30,8 @@ export function RunAgentButton() {
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [items, setItems] = useState<ScanItem[]>([]);
+  const [skipped, setSkipped] = useState<Invoice[]>([]);
+  const [failed, setFailed] = useState<FailedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // The fetch keeps running server-side regardless of whether the sheet is open — closing it
@@ -38,6 +41,8 @@ export function RunAgentButton() {
     setOpen(true);
     setRunning(true);
     setItems([]);
+    setSkipped([]);
+    setFailed([]);
     setError(null);
 
     try {
@@ -47,6 +52,10 @@ export function RunAgentButton() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let scanError: string | null = null;
+      let newCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -58,19 +67,33 @@ export function RunAgentButton() {
         for (const raw of lines) {
           if (!raw.trim()) continue;
           const payload = JSON.parse(raw) as
-            ScanItem | { done: true; total: number } | { error: string };
+            | ScanItem
+            | { skipped: true; invoice: Invoice }
+            | { failed: true; invoice: Invoice; message: string }
+            | { done: true; total: number; skipped: number; failed: number }
+            | { error: string };
 
           if ("error" in payload) {
             setError(payload.error);
+            scanError = payload.error;
           } else if ("decision" in payload) {
             setItems((prev) => [...prev, payload]);
+            newCount++;
+          } else if ("failed" in payload && "invoice" in payload) {
+            setFailed((prev) => [...prev, { invoice: payload.invoice, message: payload.message }]);
+            failedCount++;
+          } else if ("skipped" in payload && "invoice" in payload) {
+            setSkipped((prev) => [...prev, payload.invoice]);
+            skippedCount++;
           }
         }
       }
 
-      toast.success("Agent run complete", {
-        description: `${TOTAL_INVOICES} invoice(s) scanned.`,
-      });
+      if (!scanError) {
+        const description = `${newCount} new decision(s), ${skippedCount} skipped, ${failedCount} failed.`;
+        if (failedCount > 0) toast.warning("Agent run finished with issues", { description });
+        else toast.success("Agent run complete", { description });
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Agent run failed");
@@ -114,21 +137,44 @@ export function RunAgentButton() {
                 ? "Investigating each seeded invoice via the reasoning loop..."
                 : error
                   ? "The run stopped early."
-                  : "Run complete."}
+                  : failed.length > 0
+                    ? "Run complete. Failed invoices need another attempt; the scan continued with the rest."
+                    : "Run complete. Invoices already handled in their current state were skipped."}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-4 space-y-2">
-            <ProgressBar value={items.length / TOTAL_INVOICES} />
+            <ProgressBar value={(items.length + skipped.length + failed.length) / TOTAL_INVOICES} />
             <p className="text-caption text-neutral-500">
-              {items.length} / {TOTAL_INVOICES} invoice(s) decided
+              {items.length + skipped.length + failed.length} / {TOTAL_INVOICES} checked ·{" "}
+              {items.length} new decision(s) · {skipped.length} skipped · {failed.length} failed
             </p>
           </div>
+
+          {skipped.length > 0 && (
+            <p className="mt-4 text-caption text-neutral-500">
+              Skipped: {skipped.map((invoice) => invoice.id).join(", ")}. Each already has a
+              decision for its current state.
+            </p>
+          )}
 
           {error && (
             <p className="mt-4 rounded-sm border border-danger-border bg-danger-bg p-3 text-caption text-danger-text">
               {error}
             </p>
+          )}
+
+          {failed.length > 0 && (
+            <div className="mt-4 rounded-sm border border-danger-border bg-danger-bg p-3 text-caption text-danger-text">
+              <p className="font-semibold">Invoices needing another attempt</p>
+              <ul className="mt-2 space-y-1">
+                {failed.map(({ invoice, message }) => (
+                  <li key={invoice.id}>
+                    {invoice.id} · {invoice.customerName}: {message}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <ol className="mt-6 space-y-4">
@@ -178,10 +224,11 @@ export function RunAgentButton() {
             ))}
           </ol>
 
-          {running && items.length < TOTAL_INVOICES && !error && (
+          {running && items.length + skipped.length + failed.length < TOTAL_INVOICES && !error && (
             <div className="mt-6 flex items-center gap-2 text-caption text-neutral-500">
               <Loader2 size={14} className="animate-spin" />
-              Reasoning about invoice {items.length + 1} of {TOTAL_INVOICES}...
+              Checking invoice {items.length + skipped.length + failed.length + 1} of{" "}
+              {TOTAL_INVOICES}...
             </div>
           )}
         </SheetContent>

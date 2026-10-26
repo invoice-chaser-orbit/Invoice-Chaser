@@ -8,6 +8,9 @@ import { GaugeChart } from "@/components/charts/gauge-chart";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-shell";
 import type { Decision, Invoice } from "@/lib/types";
 import { usd } from "@/lib/format";
+import { isIncompleteDecision } from "@/lib/decision-state";
+import { displayDecisionAction } from "@/lib/decision-copy";
+import { latestDecisionsByInvoice } from "@/lib/decision-history";
 
 // Groups invoices by issue month and sums real outstanding balance per month — the last 7
 // months with data, oldest first. Replaces a static demo series.
@@ -55,17 +58,22 @@ export function OverviewPanel({
 }) {
   const getInvoice = (invoiceId: string) => invoices.find((i) => i.id === invoiceId);
   const currency = invoices[0]?.currency ?? "LKR";
+  const currentDecisions = latestDecisionsByInvoice(decisions);
 
   const totalOverdue = invoices.reduce(
     (sum, i) => sum + Math.max(0, i.amountDue - (i.amountReceived ?? 0)),
     0,
   );
-  const pendingApprovals = decisions.filter((d) => d.status === "pending_approval").length;
+  const pendingApprovals = currentDecisions.filter(
+    (d) => !isIncompleteDecision(d) && d.status === "pending_approval",
+  ).length;
   const today = new Date().toDateString();
   const autoExecuted = decisions.filter(
     (d) => d.status === "auto_executed" && new Date(d.createdAt).toDateString() === today,
   ).length;
-  const openEscalations = decisions.filter((d) => d.status === "ask_human").length;
+  const openEscalations = currentDecisions.filter(
+    (d) => !isIncompleteDecision(d) && d.status === "ask_human",
+  ).length;
   const dso = computeDso(invoices);
   const amountRecovered = invoices.reduce((sum, i) => sum + (i.amountReceived ?? 0), 0);
   const totalBilled = invoices.reduce((sum, i) => sum + i.amountDue, 0);
@@ -73,7 +81,8 @@ export function OverviewPanel({
   const overdueTrend = computeOverdueTrend(invoices);
   const notificationCount = pendingApprovals + openEscalations;
 
-  const recent = [...decisions]
+  const recent = currentDecisions
+    .filter((d) => !isIncompleteDecision(d))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, compact ? 3 : 5);
 
@@ -186,7 +195,7 @@ export function OverviewPanel({
                 key={d.id}
                 to={compact ? undefined : `/decisions/${d.id}`}
                 title={invoice?.customerName ?? d.customerId}
-                subtitle={d.action}
+                subtitle={displayDecisionAction(d.action)}
                 value={invoice ? usd(invoice.amountDue, invoice.currency) : "—"}
                 valueCaption={d.invoiceId}
                 status={d.status}

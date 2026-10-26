@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-shell";
@@ -16,11 +17,13 @@ import type { HumanActionType } from "@/lib/executor";
 import { humanizeToolName } from "@/lib/toolLabels";
 import { submitHumanAction } from "@/app/(dashboard)/approvals/actions";
 import { cn } from "@/lib/utils";
+import { isIncompleteDecision } from "@/lib/decision-state";
+import { displayDecisionAction } from "@/lib/decision-copy";
+import { searchDecisions } from "@/lib/search-decisions";
 
-const actions: { label: string; type: HumanActionType }[] = [
+const actions: { label: string; type: "approve" | "edit" | "override" }[] = [
   { label: "Approve", type: "approve" },
   { label: "Edit", type: "edit" },
-  { label: "Redirect", type: "redirect" },
   { label: "Override", type: "override" },
 ];
 
@@ -35,15 +38,26 @@ export function ApprovalsQueue({
 }) {
   const [dialog, setDialog] = useState<{
     decision: Decision;
-    actionType: Exclude<HumanActionType, "approve">;
+    actionType: "approve" | "edit" | "override";
   } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const getInvoice = (invoiceId: string) => invoices.find((i) => i.id === invoiceId);
 
   const queue = [...decisions]
-    .filter((d) => d.status === "pending_approval" || d.status === "ask_human")
+    .filter(
+      (d) =>
+        !isIncompleteDecision(d) && (d.status === "pending_approval" || d.status === "ask_human"),
+    )
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const matchingIds = searchQuery.trim()
+    ? new Set(searchDecisions(queue, invoices, searchQuery).map((result) => result.id))
+    : null;
+  const visibleQueue = matchingIds
+    ? queue.filter((decision) => matchingIds.has(decision.id))
+    : queue;
 
   function runAction(
     decisionId: string,
@@ -58,7 +72,11 @@ export function ApprovalsQueue({
     startTransition(async () => {
       try {
         const result = await submitHumanAction(decisionId, { actionType, ...fields });
-        if (result.emailSent) {
+        if (result.queuedForApproval) {
+          toast.success("Moved to Pending approval", {
+            description: "Review the customer email there before sending it.",
+          });
+        } else if (result.emailSent) {
           const decision = decisions.find((d) => d.id === decisionId);
           const invoice = decision && getInvoice(decision.invoiceId);
           toast.success("Email sent", {
@@ -66,8 +84,15 @@ export function ApprovalsQueue({
               ? `${invoice.customerName} was notified about ${decision.invoiceId}.`
               : "The customer was notified.",
           });
+        } else {
+          toast.success(actionType === "override" ? "Decision overridden" : "Decision recorded");
         }
         setDialog(null);
+        router.refresh();
+      } catch (error) {
+        toast.error("Action failed", {
+          description: error instanceof Error ? error.message : "Please try again.",
+        });
       } finally {
         setPendingId(null);
       }
@@ -76,17 +101,31 @@ export function ApprovalsQueue({
 
   return (
     <PageTransition className="space-y-8">
-      <DashboardTopbar title="approvals" notificationCount={queue.length} />
+      <DashboardTopbar
+        title="approvals"
+        notificationCount={queue.length}
+        onSearchChange={setSearchQuery}
+      />
 
       <div>
         <h1 className="text-h2 text-neutral-900">Approval queue</h1>
         <p className="mt-1 text-body text-neutral-500">
           Only gated decisions appear here. Nothing in this queue has been sent.
         </p>
+        {searchQuery.trim() && (
+          <p className="mt-2 text-caption text-neutral-500" aria-live="polite">
+            {visibleQueue.length} matching approval{visibleQueue.length === 1 ? "" : "s"}
+          </p>
+        )}
       </div>
 
       <StaggerGrid className="grid gap-6">
-        {queue.map((d) => {
+        {visibleQueue.length === 0 && searchQuery.trim() && (
+          <p className="glass glass-white rounded-lg p-6 text-body text-neutral-500">
+            No approval cards match your search.
+          </p>
+        )}
+        {visibleQueue.map((d) => {
           const invoice = getInvoice(d.invoiceId);
           const busy = isPending && pendingId === d.id;
           return (
@@ -113,7 +152,9 @@ export function ApprovalsQueue({
                   </div>
                 </div>
 
-                <p className="mt-5 text-body font-semibold text-neutral-900">{d.action}</p>
+                <p className="mt-5 text-body font-semibold text-neutral-900">
+                  {displayDecisionAction(d.action)}
+                </p>
                 <p className="mt-2 line-clamp-3 text-body text-neutral-500">{d.reasoning}</p>
                 {trailsByDecisionId[d.id] && trailsByDecisionId[d.id].length > 0 && (
                   <ol className="mt-4 space-y-1.5">
@@ -155,17 +196,13 @@ export function ApprovalsQueue({
                     <IcButton
                       key={a.label}
                       size="sm"
-                      variant={i === 0 ? "primary" : i === 3 ? "ghost" : "outlined"}
+                      variant={i === 0 ? "primary" : a.type === "override" ? "ghost" : "outlined"}
                       disabled={busy}
                       onClick={() => {
-                        if (a.type === "approve") {
-                          runAction(d.id, "approve");
-                        } else {
-                          setDialog({ decision: d, actionType: a.type });
-                        }
+                        setDialog({ decision: d, actionType: a.type });
                       }}
                     >
-                      {busy && a.type === "approve" ? "Approving…" : a.label}
+                      {a.label}
                     </IcButton>
                   ))}
                 </div>
@@ -181,6 +218,23 @@ export function ApprovalsQueue({
           onOpenChange={(open) => !open && setDialog(null)}
           actionType={dialog.actionType}
           decision={dialog.decision}
+          invoice={getInvoice(dialog.decision.invoiceId)}
+          proposedMessage={(() => {
+            const step = [...(trailsByDecisionId[dialog.decision.id] ?? [])]
+              .reverse()
+              .find(
+                (item) =>
+                  item.toolName === "human_prepared_email" ||
+                  item.toolName === "request_reminder_approval",
+              );
+            const output = step?.output;
+            return output &&
+              typeof output === "object" &&
+              "proposedMessage" in output &&
+              typeof output.proposedMessage === "string"
+              ? output.proposedMessage
+              : undefined;
+          })()}
           submitting={isPending}
           onSubmit={(fields) => runAction(dialog.decision.id, dialog.actionType, fields)}
         />

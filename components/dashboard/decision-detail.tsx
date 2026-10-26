@@ -11,8 +11,11 @@ import type { CustomerHistory, Decision, Invoice } from "@/lib/types";
 import { formatDateTime, usd } from "@/lib/format";
 import { humanizeToolName } from "@/lib/toolLabels";
 import { cn } from "@/lib/utils";
+import { isIncompleteDecision } from "@/lib/decision-state";
+import { displayDecisionAction } from "@/lib/decision-copy";
+import { getDeliveryEvents } from "@/lib/delivery-status";
 
-const TABS = ["Overview", "Audit trail", "Teach-me"] as const;
+const TABS = ["Overview", "Audit trail", "Delivery", "Teach-me"] as const;
 
 function parseEscalation(reason: string) {
   const labels = ["Tried", "Found", "Could not resolve", "Options", "Recommendation"];
@@ -39,19 +42,30 @@ function parseEscalation(reason: string) {
 }
 
 function OverviewTab({ decision }: { decision: Decision }) {
+  const incomplete = isIncompleteDecision(decision);
   return (
     <div className="space-y-6">
+      {incomplete && (
+        <section className="rounded-lg border border-danger-border bg-danger-bg p-6 text-body text-danger-text">
+          This agent run did not finish, so it has no recommendation to approve. Review the audit
+          trail and run the agent again.
+        </section>
+      )}
       <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <p className="text-caption text-neutral-500 uppercase">Goal</p>
         <p className="mt-2 text-body text-neutral-700">{decision.goal}</p>
       </section>
       <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <p className="text-caption text-neutral-500 uppercase">Action</p>
-        <p className="mt-2 text-body font-semibold text-neutral-900">{decision.action}</p>
+        <p className="mt-2 text-body font-semibold text-neutral-900">
+          {decision.action ? displayDecisionAction(decision.action) : "No action was produced."}
+        </p>
       </section>
       <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <p className="text-caption text-neutral-500 uppercase">Reasoning</p>
-        <p className="mt-2 text-body text-neutral-700">{decision.reasoning}</p>
+        <p className="mt-2 text-body text-neutral-700">
+          {decision.reasoning || "The run ended before reasoning was saved."}
+        </p>
       </section>
 
       {decision.status === "ask_human" && decision.escalationReason && (
@@ -68,7 +82,7 @@ function OverviewTab({ decision }: { decision: Decision }) {
         </section>
       )}
 
-      {decision.status !== "ask_human" && (
+      {decision.status !== "ask_human" && !incomplete && (
         <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
           <p className="text-caption text-neutral-500 uppercase">Escalation reason</p>
           <p className="mt-2 text-body text-neutral-500">
@@ -141,15 +155,76 @@ function TrailTab({ decision }: { decision: Decision }) {
   );
 }
 
+function DeliveryTab({ decision }: { decision: Decision }) {
+  const events = getDeliveryEvents(decision.trail);
+  const sent = events.some((event) => event.outcome === "sent");
+  const simulated = events.some((event) => event.outcome === "simulated");
+  const failed = events.some((event) => event.outcome === "failed");
+  const recordedNoMessage = decision.trail.some(
+    (step) => step.toolName === "human_action_no_customer_message",
+  );
+  const summary = sent
+    ? "A provider confirmed a customer message was sent."
+    : simulated
+      ? "A message was simulated. No real delivery is confirmed."
+      : failed
+        ? "A send attempt failed. No successful delivery is recorded."
+        : recordedNoMessage
+          ? "The human action was recorded without contacting the customer."
+          : "No customer message is confirmed in this decision's audit trail.";
+
+  return (
+    <section className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
+      <h2 className="text-h3 text-neutral-900">Customer message delivery</h2>
+      <p className="mt-2 text-body text-neutral-600">{summary}</p>
+      {events.length > 0 && (
+        <ol className="mt-6 space-y-3">
+          {events.map((event) => (
+            <li key={event.stepIndex} className="rounded-sm border border-neutral-100 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-body font-semibold text-neutral-900">{event.channel}</p>
+                <Tag
+                  tone={
+                    event.outcome === "sent"
+                      ? "success"
+                      : event.outcome === "failed"
+                        ? "danger"
+                        : "neutral"
+                  }
+                >
+                  {event.outcome === "unverified"
+                    ? "Unverified"
+                    : event.outcome.charAt(0).toUpperCase() + event.outcome.slice(1)}
+                </Tag>
+              </div>
+              <p className="mt-1 text-caption text-neutral-500">
+                {formatDateTime(event.timestamp)}
+              </p>
+              <p className="mt-2 text-body text-neutral-600">{event.detail}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function TeachMeTab({ decision }: { decision: Decision }) {
+  const steps = decision.manualProcedure ?? [];
   return (
     <section className="rounded-lg border border-primary-200 bg-white p-6 shadow-sm">
       <Tag tone="info">manualProcedure</Tag>
       <h2 className="mt-4 text-h3 text-neutral-900">
         How a person would reach this decision without the agent
       </h2>
+      {steps.length === 0 && (
+        <p className="mt-6 rounded-sm border border-danger-border bg-danger-bg p-4 text-body text-danger-text">
+          No human steps were generated because this agent run did not finish. Check the audit
+          trail, then run the agent again.
+        </p>
+      )}
       <ol className="mt-6 space-y-5">
-        {decision.manualProcedure.map((stepText, i) => (
+        {steps.map((stepText, i) => (
           <li key={i} className="flex gap-4">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-50 text-caption font-semibold text-primary-600">
               {i + 1}
@@ -166,12 +241,15 @@ export function DecisionDetail({
   decision,
   invoice,
   customer,
+  latestDecisionId,
 }: {
   decision: Decision;
   invoice: Invoice | undefined;
   customer: CustomerHistory | undefined;
+  latestDecisionId?: string;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
+  const incomplete = isIncompleteDecision(decision);
 
   return (
     <PageTransition className="space-y-8">
@@ -184,6 +262,19 @@ export function DecisionDetail({
         <ArrowLeft size={16} strokeWidth={2} />
         Back to decisions
       </Link>
+
+      {latestDecisionId && (
+        <div className="rounded-lg border border-primary-100 bg-primary-50 p-4 text-body text-neutral-700">
+          This is an earlier run for {decision.invoiceId}. The agent has reviewed this invoice
+          again.{" "}
+          <Link
+            href={`/decisions/${latestDecisionId}`}
+            className="font-semibold text-primary-600 hover:underline"
+          >
+            View the latest result
+          </Link>
+        </div>
+      )}
 
       <header className="rounded-lg border border-neutral-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -200,9 +291,13 @@ export function DecisionDetail({
           <div className="flex items-center gap-4">
             <div>
               <p className="text-caption text-neutral-500 uppercase">Confidence</p>
-              <ConfidenceMeter value={decision.confidence} className="mt-1" />
+              <ConfidenceMeter value={incomplete ? 0 : decision.confidence} className="mt-1" />
             </div>
-            <StatusTag status={decision.status} />
+            {incomplete ? (
+              <Tag tone="neutral">Incomplete run</Tag>
+            ) : (
+              <StatusTag status={decision.status} />
+            )}
           </div>
         </div>
       </header>
@@ -227,6 +322,7 @@ export function DecisionDetail({
 
       {tab === "Overview" && <OverviewTab decision={decision} />}
       {tab === "Audit trail" && <TrailTab decision={decision} />}
+      {tab === "Delivery" && <DeliveryTab decision={decision} />}
       {tab === "Teach-me" && <TeachMeTab decision={decision} />}
     </PageTransition>
   );

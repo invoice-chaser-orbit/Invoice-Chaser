@@ -13,6 +13,7 @@ export interface Invoice {
   description: string;
   disputeStatus?: "none" | "open" | "resolved";
   email: string;
+  contactApprovalRequired?: boolean;
 }
 
 export interface PaymentRecord {
@@ -53,7 +54,13 @@ export interface TrailStep {
   success: boolean;
 }
 
-export type DecisionStatus = "auto_executed" | "pending_approval" | "ask_human";
+export type DecisionStatus =
+  | "auto_executed"
+  | "pending_approval"
+  | "ask_human"
+  | "human_approved"
+  | "human_edited"
+  | "human_overridden";
 
 export interface Decision {
   id: string;
@@ -68,4 +75,5 @@ export interface Decision {
   escalationReason: string | null;
   status: DecisionStatus;
   createdAt: string;
+  completedAt?: string;
 }

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DecisionDetail } from "@/components/dashboard/decision-detail";
 import { getDecisions, getTrail } from "@/lib/decisions";
-import { getInvoices } from "@/lib/invoices";
+import { getInvoiceCatalog } from "@/lib/invoices";
 import { customerHistories } from "@/data/history";
+import { latestDecisionsByInvoice } from "@/lib/decision-history";
 
 export async function generateMetadata({
   params,
@@ -27,10 +28,20 @@ export default async function DecisionDetailPage({ params }: { params: Promise<{
   const found = decisions.find((d) => d.id === id);
   if (!found) notFound();
 
-  const [trail, invoices] = await Promise.all([getTrail(id), getInvoices()]);
+  const [trail, invoices] = await Promise.all([getTrail(id), getInvoiceCatalog()]);
   const decision = { ...found, trail };
   const invoice = invoices.find((i) => i.id === decision.invoiceId);
   const customer = customerHistories.find((c) => c.customerId === decision.customerId);
+  const latestForInvoice = latestDecisionsByInvoice(decisions).find(
+    (item) => item.invoiceId === decision.invoiceId,
+  );
 
-  return <DecisionDetail decision={decision} invoice={invoice} customer={customer} />;
+  return (
+    <DecisionDetail
+      decision={decision}
+      invoice={invoice}
+      customer={customer}
+      latestDecisionId={latestForInvoice?.id !== decision.id ? latestForInvoice?.id : undefined}
+    />
+  );
 }

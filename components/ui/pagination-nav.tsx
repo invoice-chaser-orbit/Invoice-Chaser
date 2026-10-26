@@ -14,7 +14,13 @@ export function Pagination({
   onPageChange: (p: number) => void;
   className?: string;
 }) {
-  const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
+  const visiblePageCount = 5;
+  const firstVisiblePage = Math.floor((page - 1) / visiblePageCount) * visiblePageCount + 1;
+  const lastVisiblePage = Math.min(firstVisiblePage + visiblePageCount - 1, pageCount);
+  const pages = Array.from(
+    { length: lastVisiblePage - firstVisiblePage + 1 },
+    (_, i) => firstVisiblePage + i,
+  );
   const btn =
     "inline-flex h-9 min-w-9 items-center justify-center rounded-sm border border-neutral-200 bg-white px-3 text-caption text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed";
 

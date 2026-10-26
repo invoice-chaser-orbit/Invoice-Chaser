@@ -85,7 +85,7 @@ export default async function Landing() {
                 app.invoicechaser.com/overview
               </span>
             </div>
-            <div className="max-h-[620px] overflow-hidden p-6 text-left">
+            <div className="p-6 text-left">
               <OverviewPanel invoices={invoices} decisions={decisions} compact />
             </div>
           </div>

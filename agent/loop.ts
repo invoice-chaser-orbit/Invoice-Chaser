@@ -11,6 +11,9 @@ import { withRecovery } from "./recovery.js";
 import { SYSTEM_PROMPT, CONFIDENCE_THRESHOLD } from "./prompts.js";
 import { seedInvoices } from "../data/seed.js";
 import { recordOutcome, getOutcomesForCustomer } from "./memory.js";
+import { getDecisions, getTrail, saveTrailStep } from "../lib/decisions.js";
+import { isIncompleteDecision } from "../lib/decision-state.js";
+import { latestDecisionsByInvoice } from "../lib/decision-history.js";
 import type { ReplyClassification } from "./classifier.js";
 import type { Decision, DecisionStatus, Invoice, TrailStep } from "../lib/types.js";
 
@@ -32,10 +35,12 @@ function sleep(ms: number): Promise<void> {
 // human queue (see getPendingDecisions()), but only a real ask_human call counts toward the
 // "Open escalations" KPI and the "Needs input" filter.
 export function deriveStatus(
-  terminalTool: "ask_human" | "send_reminder_email" | "send_sms_reminder" | null,
+  terminalTool:
+    "ask_human" | "request_reminder_approval" | "send_reminder_email" | "send_sms_reminder" | null,
   confidence: number,
 ): DecisionStatus {
   if (terminalTool === "ask_human") return "ask_human";
+  if (terminalTool === "request_reminder_approval") return "pending_approval";
   return confidence < CONFIDENCE_THRESHOLD ? "pending_approval" : "auto_executed";
 }
 
@@ -99,12 +104,12 @@ async function dispatchWithRecovery(
   };
 }
 
-// Earlier decisions for the same customer, within this run, feed back into the next one — same
-// intent as CLAUDE.md's promise that outcome memory changes future behaviour.
+// Feed back only the latest completed outcome for each invoice, so repeated old
+// recommendations do not amplify themselves into a new conclusion.
 async function getPriorOutcomesText(customerId: string): Promise<string> {
   const priorOutcomes = await getOutcomesForCustomer(customerId);
   return priorOutcomes.length > 0
-    ? `\n\nPrior decisions for this customer, earlier in this run:\n${priorOutcomes
+    ? `\n\nLatest completed outcomes for this customer:\n${priorOutcomes
         .map((d) => `- ${d.action} (status: ${d.status}, confidence: ${d.confidence})`)
         .join("\n")}`
     : "";
@@ -130,7 +135,8 @@ function buildStubDecision(decisionId: string, invoice: Invoice, goal: string): 
   };
 }
 
-type TerminalTool = "ask_human" | "send_reminder_email" | "send_sms_reminder";
+type TerminalTool =
+  "ask_human" | "request_reminder_approval" | "send_reminder_email" | "send_sms_reminder";
 
 // Runs the multi-turn tool loop (shared by a fresh daily-scan investigation and a reply-triggered
 // one) until a real terminal tool fires or the turn budget runs out. Mutates `messages` in place
@@ -139,7 +145,7 @@ async function runReasoningTurns(
   decisionId: string,
   invoiceId: string,
   messages: LlmMessage[],
-): Promise<{ trail: TrailStep[]; terminalTool: TerminalTool }> {
+): Promise<{ trail: TrailStep[]; terminalTool: TerminalTool; approvalQueued: boolean }> {
   const trail: TrailStep[] = [];
   let stepIndex = 0;
   let toolTurns = 0;
@@ -150,6 +156,7 @@ async function runReasoningTurns(
   // instead of genuine function calls. Which tool fired is also what determines the final
   // status below — never the model's self-reported status alone.
   let terminalTool: TerminalTool | null = null;
+  let approvalQueued = false;
 
   while (toolTurns < MAX_TOOL_TURNS && !terminalTool) {
     if (toolTurns > 0) await sleep(TURN_DELAY_MS);
@@ -193,14 +200,23 @@ async function runReasoningTurns(
         result.output !== null &&
         (result.output as { blocked?: boolean }).blocked === true;
       if (!isBlocked) effectiveToolNames.push(result.effectiveToolName);
+      if (
+        typeof result.output === "object" &&
+        result.output !== null &&
+        (result.output as { approvalRequired?: boolean }).approvalRequired === true
+      ) {
+        approvalQueued = true;
+      }
     }
     messages.push({ role: "tool", toolResults });
     toolTurns += 1;
 
     const calledAskHuman = effectiveToolNames.includes("ask_human");
+    const calledRequestApproval = effectiveToolNames.includes("request_reminder_approval");
     const calledSendEmail = effectiveToolNames.includes("send_reminder_email");
     const calledSendSms = effectiveToolNames.includes("send_sms_reminder");
     if (calledAskHuman) terminalTool = "ask_human";
+    else if (calledRequestApproval) terminalTool = "request_reminder_approval";
     else if (calledSendEmail) terminalTool = "send_reminder_email";
     else if (calledSendSms) terminalTool = "send_sms_reminder";
   }
@@ -215,7 +231,7 @@ async function runReasoningTurns(
     terminalTool = "ask_human";
   }
 
-  return { trail, terminalTool };
+  return { trail, terminalTool, approvalQueued };
 }
 
 async function finalizeDecision(
@@ -225,6 +241,7 @@ async function finalizeDecision(
   messages: LlmMessage[],
   trail: TrailStep[],
   terminalTool: TerminalTool,
+  approvalQueued: boolean,
 ): Promise<Decision> {
   await sleep(TURN_DELAY_MS);
   messages.push({
@@ -233,7 +250,9 @@ async function finalizeDecision(
   });
   const output = await generateDecision(messages);
 
-  const status: DecisionStatus = deriveStatus(terminalTool, output.confidence);
+  const status: DecisionStatus = approvalQueued
+    ? "pending_approval"
+    : deriveStatus(terminalTool, output.confidence);
 
   const decision: Decision = {
     id: decisionId,
@@ -257,7 +276,7 @@ async function finalizeDecision(
   return decision;
 }
 
-async function runInvoice(invoiceId: string): Promise<Decision> {
+export async function runInvoice(invoiceId: string): Promise<Decision> {
   const invoice = seedInvoices.find((inv) => inv.id === invoiceId);
   if (!invoice) throw new Error(`Unknown seed invoice: ${invoiceId}`);
 
@@ -270,12 +289,33 @@ async function runInvoice(invoiceId: string): Promise<Decision> {
   const priorOutcomesText = await getPriorOutcomesText(invoice.customerId);
   const messages: LlmMessage[] = [
     { role: "system", text: SYSTEM_PROMPT },
-    { role: "user", text: `${goal}\nInvoice ID to investigate: ${invoice.id}${priorOutcomesText}` },
+    {
+      role: "user",
+      text: `${goal}\nInvoice ID to investigate: ${invoice.id}${invoice.contactApprovalRequired ? "\nFirst-touch customer contact for this account requires human approval. If the facts support a routine reminder, call request_reminder_approval with the proposed customer message. It queues approval without sending. Use ask_human only if the facts are unresolved or the action is an escalation beyond a first reminder." : ""}${priorOutcomesText}`,
+    },
   ];
 
   await recordOutcome(buildStubDecision(decisionId, invoice, goal));
-  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
-  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+  if (process.env.DEMO_INTERRUPT_INVOICE_ID === invoice.id) {
+    await saveTrailStep({
+      decisionId,
+      stepIndex: 1,
+      toolName: "demo_interruption",
+      input: { invoiceId: invoice.id },
+      output: {
+        error: "Demo interruption before reasoning completed; rerun this invoice to recover.",
+      },
+      timestamp: new Date().toISOString(),
+      success: false,
+    });
+    throw new Error(`Demo interruption after the initial decision record for ${invoice.id}`);
+  }
+  const { trail, terminalTool, approvalQueued } = await runReasoningTurns(
+    decisionId,
+    invoice.id,
+    messages,
+  );
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool, approvalQueued);
 }
 
 // Trigger type 2 (inbound email reply — see CLAUDE.md "The loop"). Reuses the exact same
@@ -307,8 +347,12 @@ export async function runReplyDecision(
   ];
 
   await recordOutcome(buildStubDecision(decisionId, invoice, goal));
-  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
-  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+  const { trail, terminalTool, approvalQueued } = await runReasoningTurns(
+    decisionId,
+    invoice.id,
+    messages,
+  );
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool, approvalQueued);
 }
 
 // Trigger type 3 (silence timeout — no reply within N days of a prior action). Reuses the exact
@@ -340,8 +384,12 @@ export async function runSilenceCheck(
   ];
 
   await recordOutcome(buildStubDecision(decisionId, invoice, goal));
-  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
-  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+  const { trail, terminalTool, approvalQueued } = await runReasoningTurns(
+    decisionId,
+    invoice.id,
+    messages,
+  );
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool, approvalQueued);
 }
 
 // Trigger type 3 (payment webhook — see CLAUDE.md "The loop"). Reuses the exact same reasoning
@@ -372,8 +420,12 @@ export async function runPaymentWebhookDecision(
   ];
 
   await recordOutcome(buildStubDecision(decisionId, invoice, goal));
-  const { trail, terminalTool } = await runReasoningTurns(decisionId, invoice.id, messages);
-  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool);
+  const { trail, terminalTool, approvalQueued } = await runReasoningTurns(
+    decisionId,
+    invoice.id,
+    messages,
+  );
+  return finalizeDecision(decisionId, invoice, goal, messages, trail, terminalTool, approvalQueued);
 }
 
 function printDecision(decision: Decision, invoiceLabel: string): void {
@@ -401,29 +453,92 @@ function printDecision(decision: Decision, invoiceLabel: string): void {
 // as every other trigger. Exported so both the CLI entrypoint (main, below) and the dashboard's
 // "Run agent" action drive the identical scan — the callback lets a caller observe each decision
 // as it lands rather than waiting for the whole batch.
+let dailyScanInProgress = false;
+
 export async function runDailyScan(
   onDecision?: (decision: Decision, invoice: Invoice) => void,
+  onSkip?: (invoice: Invoice) => void,
+  onError?: (invoice: Invoice, error: Error) => void,
 ): Promise<Decision[]> {
-  const decisions: Decision[] = [];
-  for (let i = 0; i < seedInvoices.length; i++) {
-    const invoice = seedInvoices[i];
-    console.log(`\nInvestigating ${invoice.id} (${invoice.customerName})...`);
-    const decision = await runInvoice(invoice.id);
-    decisions.push(decision);
-    onDecision?.(decision, invoice);
-    if (i < seedInvoices.length - 1) await sleep(TURN_DELAY_MS);
+  if (dailyScanInProgress) throw new Error("A daily ledger scan is already running.");
+  dailyScanInProgress = true;
+  try {
+    const decisions: Decision[] = [];
+    const latestByInvoice = new Map(
+      latestDecisionsByInvoice(await getDecisions()).map((decision) => [
+        decision.invoiceId,
+        decision,
+      ]),
+    );
+    for (let i = 0; i < seedInvoices.length; i++) {
+      const invoice = seedInvoices[i];
+      const previous = latestByInvoice.get(invoice.id);
+      let unchanged = Boolean(previous && !isIncompleteDecision(previous));
+      if (
+        previous &&
+        ["auto_executed", "human_approved", "human_edited", "human_overridden"].includes(
+          previous.status,
+        )
+      ) {
+        const trail = await getTrail(previous.id);
+        const snapshot = trail.find(
+          (step) => step.toolName === "get_invoice_details" && step.success,
+        )?.output as Partial<Invoice> | undefined;
+        if (snapshot?.id === invoice.id) {
+          unchanged =
+            snapshot.amountDue === invoice.amountDue &&
+            (snapshot.amountReceived ?? 0) === (invoice.amountReceived ?? 0) &&
+            snapshot.dueDate === invoice.dueDate &&
+            (snapshot.disputeStatus ?? "none") === (invoice.disputeStatus ?? "none");
+        }
+      }
+      if (previous && unchanged) {
+        console.log(
+          `Skipping ${invoice.id}: it already has a decision for the current invoice state.`,
+        );
+        onSkip?.(invoice);
+        continue;
+      }
+      console.log(`\nInvestigating ${invoice.id} (${invoice.customerName})...`);
+      let decision: Decision | undefined;
+      try {
+        decision = await runInvoice(invoice.id);
+      } catch (error) {
+        const failure = error instanceof Error ? error : new Error(String(error));
+        console.error(`Failed ${invoice.id}:`, failure);
+        onError?.(invoice, failure);
+      }
+      if (decision) {
+        decisions.push(decision);
+        onDecision?.(decision, invoice);
+      }
+      if (i < seedInvoices.length - 1) await sleep(TURN_DELAY_MS);
+    }
+    return decisions;
+  } finally {
+    dailyScanInProgress = false;
   }
-  return decisions;
 }
 
 async function main(): Promise<void> {
   console.log(`Running InvoiceChaser agent over ${seedInvoices.length} seeded invoices...`);
-  const decisions = await runDailyScan((decision, invoice) =>
-    printDecision(decision, `${invoice.id} — ${invoice.customerName}`),
+  let skipped = 0;
+  let failed = 0;
+  const decisions = await runDailyScan(
+    (decision, invoice) => printDecision(decision, `${invoice.id} — ${invoice.customerName}`),
+    () => {
+      skipped++;
+    },
+    (invoice, error) => {
+      failed++;
+      console.error(`${invoice.id}: ${error.message}`);
+    },
   );
 
   console.log(`\n${"=".repeat(70)}`);
-  console.log(`Day 0 gate: ${decisions.length}/${seedInvoices.length} decisions produced.`);
+  console.log(
+    `Daily scan: ${decisions.length} new decision(s), ${skipped} skipped, ${failed} failed.`,
+  );
   console.log(
     `  Pending human approval: ${decisions.filter((d) => d.status === "pending_approval").length}`,
   );

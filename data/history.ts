@@ -344,6 +344,74 @@ export const customerHistories: CustomerHistory[] = [
     pastPromises: [{ madeOn: "2026-06-16", promisedPayDate: "2026-06-23", kept: false }],
     notes: "Promised payment on 2026-06-16 for a prior invoice by 2026-06-23; missed it.",
   },
+  {
+    customerId: "CUST-026",
+    customerName: "Kelaniya Office Supplies",
+    relationshipYears: 2,
+    annualRevenue: 310000,
+    paymentHistory: [
+      { invoiceId: "INV-5721", daysLate: 0 },
+      { invoiceId: "INV-5904", daysLate: 2 },
+    ],
+    openDeals: [],
+    pastPromises: [],
+    notes:
+      "Reliable account. Customer contact requires a human review before sending a first reminder.",
+  },
+  {
+    customerId: "CUST-027",
+    customerName: "Kegalle Packaging Works",
+    relationshipYears: 3,
+    annualRevenue: 280000,
+    paymentHistory: [
+      { invoiceId: "INV-5742", daysLate: 3 },
+      { invoiceId: "INV-5941", daysLate: 4 },
+    ],
+    openDeals: [],
+    pastPromises: [],
+    notes: "Usually settles within four days of terms. No disputes or open deals.",
+  },
+  {
+    customerId: "CUST-028",
+    customerName: "Moratuwa Print House",
+    relationshipYears: 3,
+    annualRevenue: 360000,
+    paymentHistory: [
+      { invoiceId: "INV-5771", daysLate: 1 },
+      { invoiceId: "INV-5960", daysLate: 2 },
+    ],
+    openDeals: [],
+    pastPromises: [],
+    notes:
+      "Reliable payer. First customer contact is subject to human approval under the account policy.",
+  },
+  {
+    customerId: "CUST-029",
+    customerName: "Panadura Food Packaging",
+    relationshipYears: 4,
+    annualRevenue: 420000,
+    paymentHistory: [
+      { invoiceId: "INV-5682", daysLate: 0 },
+      { invoiceId: "INV-5918", daysLate: 3 },
+    ],
+    openDeals: [],
+    pastPromises: [],
+    notes:
+      "Consistently pays within three days of terms. Human approval is required for first contact.",
+  },
+  {
+    customerId: "CUST-030",
+    customerName: "Kalutara Safety Equipment",
+    relationshipYears: 2,
+    annualRevenue: 250000,
+    paymentHistory: [
+      { invoiceId: "INV-5802", daysLate: 2 },
+      { invoiceId: "INV-5987", daysLate: 4 },
+    ],
+    openDeals: [],
+    pastPromises: [],
+    notes: "Usually pays within four days of terms. No open deal, dispute, or broken promise.",
+  },
 ];
 
 // Payments/Stripe-PayHere transaction history. Deliberately has no record matching the
